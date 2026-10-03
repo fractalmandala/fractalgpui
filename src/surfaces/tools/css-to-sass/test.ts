@@ -6,13 +6,17 @@ import { last_copied } from '../../../kernel/clipboard.ts';
 import { all_commands } from '../../../kernel/commands.svelte.ts';
 import { settings, switch_to } from '../../../kernel/settings.svelte.ts';
 import { status } from '../../../kernel/status.svelte.ts';
-import { css_tool, headline, SAMPLE, SAMPLES } from './state.svelte.ts';
+import { css_tool, detect_syntax, history_of, headline, SAMPLE, SAMPLES, SASS_SAMPLE, SASS_SAMPLES } from './state.svelte.ts';
 
 load_styles();
 css_tool.css = '.a { color: red }\n.a .b { margin: 0 }';
 css_tool.nest = true;
 css_tool.history = [];
 css_tool.tab = 'convert';
+css_tool.direction = 'css-to-sass';
+css_tool.sass = SASS_SAMPLE;
+css_tool.syntax = 'auto';
+css_tool.style = 'expanded';
 switch_to('tools');
 mount_headless(App, { width: 1400, height: 538 });
 
@@ -77,4 +81,50 @@ all_commands().find((c) => c.id === 'css-to-sass.diff')!.run();
 click_test_id('surface-tools'); // settle
 check('a tool command opens Tools on that tool', [settings.activeSurface, css_tool.tab, !!find_test_id('diff-view')], ['tools', 'diff', true]);
 
-finish('css-to-sass', 24);
+// Sass → CSS
+const settle = () => click_test_id('tool-item-css-to-sass');
+switch_to('tools');
+settle();
+click_test_id('opt-direction-sass-to-css');
+check('direction toggle switches to Sass → CSS', [css_tool.direction, !!find_test_id('sass-input'), !find_test_id('css-input')], ['sass-to-css', true, true]);
+check('only Sass → CSS options show', [!!find_test_id('opt-syntax'), !!find_test_id('opt-style'), !!find_test_id('opt-nest'), !!find_test_id('opt-comments')], [true, true, false, false]);
+check('Diff is hidden for Sass → CSS', [!!find_test_id('surface-tabs-convert'), !!find_test_id('surface-tabs-diff')], [true, false]);
+check('the sample compiles to CSS', !!find_test_id('css-output') && painted().includes('.btn.primary:focus-visible') && painted().includes('outline-offset: 2px'));
+check('samples are per direction', [SASS_SAMPLES.every((x) => !!find_test_id(`sample-${x.id}`)), !!find_test_id('sample-components')], [true, false]);
+css_tool.sass = '$c: red\n.a\n\tcolor: $c\n\t.b\n\t\tmargin: 0\n';
+settle();
+click_test_id('copy');
+check('indented Sass compiles; copy puts the CSS on the clipboard', last_copied(), '.a {\n  color: red;\n}\n.a .b {\n  margin: 0;\n}\n');
+check('copy flashes the CSS line count', status.message, 'Copied 6 lines of CSS');
+click_test_id('opt-style-compressed');
+click_test_id('copy');
+check('compressed output style', last_copied(), '.a{color:red}.a .b{margin:0}\n');
+click_test_id('opt-style-expanded');
+css_tool.sass = '.card { .title { font-weight: 600; } }';
+settle();
+check('SCSS is auto-detected', [detect_syntax(css_tool.sass), painted().includes('SCSS ·'), painted().includes('.card .title')], ['scss', true, true]);
+check('interpolation braces do not make Sass look like SCSS', detect_syntax('.pad-#{$n}\n\tpadding: 1px'), 'indented');
+click_test_id('opt-syntax-indented');
+check('forcing the indented syntax on SCSS shows the compile error inline', !!find_test_id('css-error') && !find_test_id('css-output'));
+click_test_id('opt-syntax-auto');
+css_tool.sass = '.a\n\tcolor: $missing\n';
+settle();
+check('compile errors name the line', !!find_test_id('css-error') && painted().includes('Line 2: Undefined variable.'));
+
+// Swap: output becomes the other direction's input
+css_tool.sass = '.a\n\tcolor: red\n';
+css_tool.indent = 'tab';
+settle();
+click_test_id('swap');
+check('swap moves the CSS into CSS → Sass', [css_tool.direction, css_tool.css], ['css-to-sass', '.a {\n  color: red;\n}\n']);
+check('swapping back shows Convert and Diff again', !!find_test_id('css-input') && !!find_test_id('surface-tabs-diff'));
+click_test_id('swap');
+check('swap moves the Sass back into Sass → CSS', [css_tool.direction, css_tool.sass], ['sass-to-css', '.a\n\tcolor: red\n']);
+const sass_in = '$c: red\n.a\n\tcolor: $c\n\t.b\n\t\tmargin: 0\n';
+check('recent inputs are per direction', [!!find_test_id('history-0'), history_of('sass-to-css').some((h) => h.css === sass_in), history_of('css-to-sass').some((h) => h.css === sass_in)], [true, true, false]);
+check('a Sass headline is its first line', headline('// note\n.btn\n\tcolor: red'), '.btn');
+if (process.env.FRACTALGPUI_SHOTS) screenshot(`${process.env.FRACTALGPUI_SHOTS}/sass-to-css.png`);
+click_test_id('opt-direction-css-to-sass');
+check('direction toggles back', css_tool.direction, 'css-to-sass');
+
+finish('css-to-sass', 42);
