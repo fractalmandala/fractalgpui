@@ -20,13 +20,25 @@ Needs Bun ≥ 1.4 on `PATH` (tested with `~/.bun/bin/bun` 1.4.2) because the scr
 | Keys | Does |
 |---|---|
 | ⌘K | Command palette (type to filter, ↑/↓, ⏎, esc) |
-| ⌘1 … ⌘9 | Switch to tool N in the rail |
+| ⌘1 … ⌘9 | Switch to surface N |
+| ⌘B | Left sidebar ↔ icon rail |
+| ⌘J / ⌘I | Right container A / B |
+| ⌘\\ | Close / reopen every panel |
+| ⌃⇥ / ⌃⇧⇥ | Next / previous tab |
 | ⇧⌘L | Toggle light / dark |
 | ⇧⌘C | CSS → Sass: copy the output |
 
-Tools: **Home** (tools, roadmap, shortcuts, style-adapter report) and **CSS → Sass**
-(paste CSS on the left; indented Sass on the right; options for nesting, `@media`
-folding, comment style, indent; Copy goes to the macOS clipboard via `pbcopy`).
+Window: left sidebar (surface nav + the surface's own context; collapses to a 52px
+rail) | title bar, tabs, surface, status bar | right container A | right container B.
+The right containers are generic and empty unless the surface fills them. Every panel
+is resizable by its splitter (double-click resets), widths are kept per surface, and
+panels that don't fit the window drop out (B first) without changing your choice.
+
+Surfaces: **Home** (a card per surface) and **CSS → Sass** (paste CSS left, indented
+Sass right, an options row for nesting, `@media` folding, comments and indent; samples
+and recent inputs in the left sidebar; a **Diff** tab comparing the input with the Sass
+compiled back to CSS; Copy goes to the macOS clipboard via `pbcopy`). Style-adapter
+warnings show in the status bar (click for detail, or "Show style diagnostics").
 
 ## Layout
 
@@ -35,13 +47,13 @@ folding, comment style, indent; Copy goes to the macOS clipboard via `pbcopy`).
 | `app.ts` | Entry: `build/hot.ts` opens the window, remounts on `.svelte`/`.sass` saves in `src/` **and** in fractalstyler's styles. |
 | `build/` | The fractalstyler → GPUI adapter (build time / load time, no UI). |
 | `src/App.svelte` | Applies the theme (`set_css_vars`) and mounts the shell. |
-| `src/kernel/` | Tool registry, commands + keymap + palette state, settings persistence, theme tokens, status, clipboard. |
-| `src/shell/` | `Shell` (key handling, active tool), `ToolRail`, `StatusBar`, `CommandPalette`. |
-| `src/ui/` | Shared bits: `Button`, `Kbd`. |
-| `src/tools/<id>/` | One folder per tool: `index.ts` manifest, `state.svelte.ts`, page component, `test.ts` (headless), `lib/` (UI-free logic + `*.test.ts`). |
-| `src/tools/index.ts` | Rail order. Adding a tool = a folder + one line here. |
+| `src/kernel/` | Surface registry, commands + keymap + palette state, panel layout (`layout.svelte.ts`), window size, typed bus, settings persistence, theme tokens, status, clipboard. |
+| `src/shell/` | `Shell` (regions, key handling), `LeftSidebar`, `TitleBar`, `RightPanel` (a generic container), `StatusBar`, `CommandPalette`. |
+| `src/ui/` | Primitives: `Icon` (Lucide SVGs in `assets/icons`), `IconButton`, `Button`, `Tabs`, `Segmented`, `Toggle`, `Pill`, `Card`, `SectionLabel`, `PanelHeader`, `Splitter`, `Kbd`. |
+| `src/surfaces/<id>/` | One folder per surface: `index.ts` manifest, `state.svelte.ts`, components, `test.ts` (headless), `lib/` (UI-free logic + `*.test.ts`). |
+| `src/surfaces/index.ts` | Nav order. Adding a surface = a folder + one line here. |
 | `src/styles/` | `index.sass` → `_own.sass`, the one place for app-only classes. |
-| `test/` | `harness.ts`, `styles.ts` (strict style check), `shell.ts` (rail, keymap, palette, theme, persistence). |
+| `test/` | `harness.ts`, `styles.ts` (strict style check), `ui.ts` (primitives), `layout.ts` (panel state), `panels.ts` (collapse, resize), `shell.ts` (nav, Home, keymap, palette, theme, persistence). |
 | `test.ts` | Runs every headless suite in its own process, then `bun test ./src`. |
 | `vendor/` | The custom-renderer Svelte build `gpuix-svelte` requires. |
 
@@ -80,10 +92,14 @@ Rules of the road (fractalstyler's closed world):
 
 ## Kernel notes
 
-- **Tools** are `ToolManifest`s (`src/kernel/types.ts`): id, title, glyph,
-  description, component, commands. Their commands are registered at start-up and grouped
-  under the tool's title in the palette.
-- **Keep-alive**: the page component unmounts when you switch tools, but tool state lives
+- **Surfaces** are `Surface`s (`src/kernel/types.ts`): id, title, icon, description,
+  component, and optional slots: `left` (sidebar context), `toolbar` (title bar),
+  `tabs`, `panels.rightA` / `panels.rightB` (`{ header?, body? }` for the right
+  containers), `layout` (default widths), `badge`, `commands`, `load()` (runs once on
+  first show). Commands are registered at start-up and grouped under the title.
+- **Bus** (`kernel/bus.ts`, events typed in `kernel/events.ts`): surfaces talk through
+  it, never by importing each other. `surface:switch` is sent on every switch.
+- **Keep-alive**: the page component unmounts when you switch surfaces, but state lives
   in its `state.svelte.ts` module (`persisted(...)`), so it survives switching, hot
   reloads and restarts.
 - **Settings**: `persisted(key, defaults)` gives a deep `$state`; changes are written
@@ -101,7 +117,9 @@ Rules of the road (fractalstyler's closed world):
 
 ## GPUI limits worth knowing
 
-GPUI has no CSS engine: flexbox only, `px`, `:hover`/`:active`, `var(--token)`. No
+GPUI has no CSS engine: flexbox only, no window resize event (`kernel/window.svelte.ts` polls),
+fonts by installed family name only ("General Sans Variable"), `<svg src>` for tintable
+icons, and `<code>`'s highlighter assumes a dark background (no `sass` grammar);, `px`, `:hover`/`:active`, `var(--token)`. No
 `rem`, `box-shadow`, `transition`, descendant selectors or `margin: 0 auto` (the adapter
 handles what it can and reports the rest). Use `{#if}` instead of `display: none`, put
 `hitbox="self"` on clickable elements that contain children, and remember there is no
