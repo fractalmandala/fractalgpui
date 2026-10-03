@@ -3,9 +3,8 @@
 	import { active_surface } from '../kernel/surfaces.svelte.ts';
 	import IconButton from '../ui/IconButton.svelte';
 
-	// The main area's 44px header: surface title, its toolbar, and the right-panel toggles
-	// (shown only for panels the surface has).
-	let { agent, inspector }: { agent: boolean; inspector: boolean } = $props();
+	// The main area's 44px header: surface title, its toolbar, and the two right-container toggles.
+	let { rightA, rightB }: { rightA: boolean; rightB: boolean } = $props();
 
 	const tool = $derived(active_surface());
 	const Toolbar = $derived(tool.toolbar);
@@ -18,11 +17,7 @@
 	</div>
 	<div class="row ycenter gap-xs shrink-0">
 		{#if Toolbar}<Toolbar />{/if}
-		{#if tool.agent !== false}
-			<IconButton icon="bot" active={agent} testId="toggle-agent" onclick={() => toggle('agent')} />
-		{/if}
-		{#if tool.inspector}
-			<IconButton icon="sliders-horizontal" active={inspector} testId="toggle-inspector" onclick={() => toggle('inspector')} />
-		{/if}
+		<IconButton icon="panel-right" active={rightA} testId="toggle-rightA" onclick={() => toggle('rightA')} />
+		<IconButton icon="panel-right" active={rightB} testId="toggle-rightB" onclick={() => toggle('rightB')} />
 	</div>
 </div>

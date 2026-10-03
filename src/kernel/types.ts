@@ -1,6 +1,7 @@
 import type { AnyComponent } from 'gpuix-svelte';
 import type { IconName } from '../ui/icons.ts';
 import type { Tab } from '../ui/types.ts';
+import type { RightRegion } from './layout.svelte.ts';
 import type { Widths } from './layout.svelte.ts';
 
 /** Something the user can do: from the palette, a keybinding, or a button. */
@@ -32,11 +33,11 @@ export interface Surface {
 	component: AnyComponent;
 	/** Context under the nav in the left sidebar. */
 	left?: AnyComponent;
-	/** Right-hand config panel, titled `inspectorTitle` (default "Inspector"). */
-	inspector?: AnyComponent;
-	inspectorTitle?: string;
-	/** The agent panel body: omitted = the shared agent panel; `false` = no agent panel. */
-	agent?: AnyComponent | false;
+	/**
+	 * Content for the two right-hand containers. Both containers exist on every
+	 * surface (empty unless filled); a surface may fill a header row and/or a body.
+	 */
+	panels?: Partial<Record<RightRegion, PanelSlot>>;
 	/** Actions in the title bar, right of the title. */
 	toolbar?: AnyComponent;
 	/** A tab row above the content; the surface keeps the value in its state. */
@@ -51,9 +52,8 @@ export interface Surface {
 	load?: () => void | Promise<void>;
 }
 
-/** A surface that is designed but not built yet: shown on Home as a muted card. */
-export interface PlannedSurface {
-	title: string;
-	icon: IconName;
-	description: string;
+/** What a surface may put in a right-hand container. */
+export interface PanelSlot {
+	header?: AnyComponent;
+	body?: AnyComponent;
 }

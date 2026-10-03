@@ -5,11 +5,13 @@ import App from '../../App.svelte';
 import { last_copied } from '../../kernel/clipboard.ts';
 import { switch_to } from '../../kernel/settings.svelte.ts';
 import { status } from '../../kernel/status.svelte.ts';
-import { css_tool, SAMPLE } from './state.svelte.ts';
+import { css_tool, headline, SAMPLE, SAMPLES } from './state.svelte.ts';
 
 load_styles();
 css_tool.css = '.a { color: red }\n.a .b { margin: 0 }';
 css_tool.nest = true;
+css_tool.history = [];
+css_tool.tab = 'convert';
 switch_to('css-to-sass');
 mount_headless(App, { width: 1400, height: 538 });
 
@@ -46,4 +48,25 @@ check('sample loads', css_tool.css, SAMPLE);
 check('first output line (a comment) is painted, not clipped', painted().includes('// Buttons'));
 if (process.env.FRACTALGPUI_SHOTS) screenshot(`${process.env.FRACTALGPUI_SHOTS}/css-to-sass.png`);
 
-finish('css-to-sass', 13);
+// left sidebar: samples and recent inputs
+check('left sidebar lists the samples', SAMPLES.every((x) => !!find_test_id(`sample-${x.id}`)));
+check('replaced and copied inputs are kept, newest first', css_tool.history.map((h) => h.css), ['.x{color: blue}', '.broken { color: red', '.a { color: red }\n.a .b { margin: 0 }']);
+click_test_id('history-1');
+check('clicking a recent input restores it', css_tool.css, '.broken { color: red');
+click_test_id('sample-layout');
+check('clicking a sample loads it', css_tool.css, SAMPLES[1].css);
+check('headline is the first selector', headline(SAMPLES[2].css), '.prose');
+
+// Convert / Diff tabs
+click_test_id('surface-tabs-diff');
+check('diff tab shows the round trip', (css_tool.tab as string) === 'diff' && !!find_test_id('diff-view') && !find_test_id('css-input'));
+css_tool.css = '.a { color: red }\n.a .b { margin: 0 }';
+click_test_id('surface-tabs-diff');
+check('an exact conversion reports identical', !!find_test_id('diff-identical'));
+if (process.env.FRACTALGPUI_SHOTS) screenshot(`${process.env.FRACTALGPUI_SHOTS}/css-to-sass-diff.png`);
+click_test_id('surface-tabs-convert');
+check('convert tab returns to the panes', !!find_test_id('css-input'));
+click_test_id('history-clear');
+check('recent inputs can be cleared', css_tool.history.length === 0 && !find_test_id('history-0'));
+
+finish('css-to-sass', 22);

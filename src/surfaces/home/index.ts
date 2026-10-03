@@ -5,7 +5,6 @@ export default {
 	id: 'home',
 	title: 'Home',
 	icon: 'house',
-	description: 'What is here, what is next, and how the styling adapter is doing.',
-	component: Home,
-	agent: false
+	description: 'Every surface in the workbench.',
+	component: Home
 } satisfies Surface;

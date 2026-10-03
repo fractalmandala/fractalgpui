@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { win } from '../../kernel/window.svelte.ts';
+	import Diff from './Diff.svelte';
+	import Options from './Options.svelte';
 	import { convert, css_tool } from './state.svelte.ts';
 
 	// All state is in state.svelte.ts (persisted, survives tool switches); this page only renders it.
@@ -7,7 +9,7 @@
 
 	// GPUI's textarea sizes to its rows (20px each) and scrolls inside, so fill the
 	// pane from the window height (polled by the shell; there is no resize event).
-	const rows = $derived(Math.max(6, Math.min(60, Math.floor((win.height - 190) / 20))));
+	const rows = $derived(Math.max(6, Math.min(60, Math.floor((win.height - 240) / 20))));
 
 	const summary = $derived.by(() => {
 		if (!outcome.ok) return '';
@@ -17,6 +19,10 @@
 </script>
 
 <div class="box full min0 pad-md gap-md">
+	<Options />
+	{#if css_tool.tab === 'diff'}
+		<Diff />
+	{:else}
 	<div class="row grow min0 gap-md">
 		<div class="box grow min0 gap-xs">
 			<text class="wb-label">CSS</text>
@@ -46,6 +52,7 @@
 			</div>
 		</div>
 	</div>
+	{/if}
 
 	{#if outcome.ok && outcome.result.warnings.length}
 		<div class="box gap-xs shrink-0" testId="sass-warnings">

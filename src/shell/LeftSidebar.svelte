@@ -7,7 +7,6 @@
 	import IconButton from '../ui/IconButton.svelte';
 	import Kbd from '../ui/Kbd.svelte';
 	import Pill from '../ui/Pill.svelte';
-	import SectionLabel from '../ui/SectionLabel.svelte';
 	import Splitter from '../ui/Splitter.svelte';
 
 	// The left sidebar: brand, surface nav, the active surface's `left` slot, and app
@@ -40,7 +39,6 @@
 		</div>
 
 		<div class="box gap-xs px-sm pb-sm">
-			<div class="px-sm py-xs"><SectionLabel label="Surfaces" /></div>
 			{#each surfaces as tool, i (tool.id)}
 				<div
 					class="wb-nav-item row ycenter gap-sm"

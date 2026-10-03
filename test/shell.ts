@@ -17,7 +17,7 @@ check('status bar shows the tool', all_text().includes('Fractal workbench'));
 
 // home grid
 check('home lists surfaces as cards', !!find_test_id('home-open-css-to-sass'));
-check('home lists planned surfaces as muted cards', all_text().includes('Token inspector') && !!find_test_id('planned-card'));
+check('home lists only real surfaces', !all_text().includes('Planned') && !find_test_id('planned-card'));
 check('home carries no style diagnostics', !all_text().includes('declarations dropped') && !all_text().includes('Styles'));
 click_test_id('home-open-css-to-sass');
 check('a home card opens its surface', settings.activeSurface, 'css-to-sass');

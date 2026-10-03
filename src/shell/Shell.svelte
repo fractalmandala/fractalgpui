@@ -5,7 +5,6 @@
 	import { active_surface, ensure_loaded, install } from '../kernel/surfaces.svelte.ts';
 	import { watch_window, win } from '../kernel/window.svelte.ts';
 	import Tabs from '../ui/Tabs.svelte';
-	import AgentPanel from './AgentPanel.svelte';
 	import CommandPalette from './CommandPalette.svelte';
 	import LeftSidebar from './LeftSidebar.svelte';
 	import RightPanel from './RightPanel.svelte';
@@ -14,16 +13,15 @@
 
 	install();
 
-	// Regions: left sidebar (or rail) | title bar, tabs, surface, status bar | agent | inspector.
+	// Regions: left sidebar (or rail) | title bar, tabs, surface, status bar | right A | right B.
+	// The right containers are always available; the surface may fill them.
 	const tool = $derived(active_surface());
 	const widths = $derived({
 		left: width_of('left', tool.id, tool.layout),
-		agent: width_of('agent', tool.id, tool.layout),
-		inspector: width_of('inspector', tool.id, tool.layout)
+		rightA: width_of('rightA', tool.id, tool.layout),
+		rightB: width_of('rightB', tool.id, tool.layout)
 	});
-	const shown = $derived(fit(win.width, { left: true, agent: tool.agent !== false, inspector: !!tool.inspector }, widths));
-	const Agent = $derived(tool.agent || AgentPanel);
-	const Inspector = $derived(tool.inspector);
+	const shown = $derived(fit(win.width, { left: true, rightA: true, rightB: true }, widths));
 
 	$effect(() => watch_window());
 	$effect(() => ensure_loaded(tool));
@@ -47,7 +45,7 @@
 	{#if shown.left !== 'none'}<LeftSidebar mode={shown.left} width={widths.left} />{/if}
 
 	<div class="box grow min0 hfull" testId="main">
-		<TitleBar agent={shown.agent} inspector={shown.inspector} />
+		<TitleBar rightA={shown.rightA} rightB={shown.rightB} />
 		{#if tool.tabs}
 			<Tabs tabs={tool.tabs.list()} value={tool.tabs.value()} onchange={tool.tabs.select} testId="surface-tabs" />
 		{/if}
@@ -57,14 +55,8 @@
 		<StatusBar />
 	</div>
 
-	{#if shown.agent}
-		<RightPanel region="agent" title="Agent" width={widths.agent}><Agent /></RightPanel>
-	{/if}
-	{#if shown.inspector && Inspector}
-		<RightPanel region="inspector" title={tool.inspectorTitle ?? 'Inspector'} width={widths.inspector}>
-			<div class="box full min0 scroll-y"><Inspector /></div>
-		</RightPanel>
-	{/if}
+	{#if shown.rightA}<RightPanel region="rightA" slot={tool.panels?.rightA} width={widths.rightA} />{/if}
+	{#if shown.rightB}<RightPanel region="rightB" slot={tool.panels?.rightB} width={widths.rightB} />{/if}
 
 	{#if palette.open}<CommandPalette />{/if}
 </div>
