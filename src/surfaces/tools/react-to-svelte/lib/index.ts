@@ -1,1 +1,1 @@
-export { convertReactToSvelte, type ConversionResult } from './convert.ts';
+export { react_to_svelte, convertReactToSvelte, ReactConvertError, type ConversionResult, type ConvertedFile } from './convert.ts';
