@@ -4,6 +4,7 @@
  */
 
 import css_to_sass from './css-to-sass/index.ts';
+import react_to_svelte from './react-to-svelte/index.ts';
 import type { Tool } from './types.ts';
 
-export const TOOLS: Tool[] = [css_to_sass];
+export const TOOLS: Tool[] = [css_to_sass, react_to_svelte];

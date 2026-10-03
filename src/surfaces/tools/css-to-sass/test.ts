@@ -18,7 +18,7 @@ css_tool.sass = SASS_SAMPLE;
 css_tool.syntax = 'auto';
 css_tool.style = 'expanded';
 switch_to('tools');
-mount_headless(App, { width: 1400, height: 538 });
+mount_headless(App, { width: 1400, height: 640 }); // tall enough for the tool list plus every sample and recent row
 
 check('page mounts', !!find_test_id('css-input') && !!find_test_id('sass-output'));
 check('output is nested Sass', painted().includes('.a') && painted().includes('color: red') && painted().includes('.b'));
