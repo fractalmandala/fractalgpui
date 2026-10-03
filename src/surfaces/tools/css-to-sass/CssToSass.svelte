@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { win } from '../../kernel/window.svelte.ts';
+	import { win } from '../../../kernel/window.svelte.ts';
 	import Diff from './Diff.svelte';
 	import Options from './Options.svelte';
 	import { convert, css_tool } from './state.svelte.ts';

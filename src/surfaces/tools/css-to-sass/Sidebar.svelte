@@ -1,7 +1,7 @@
 <script lang="ts">
-	import Icon from '../../ui/Icon.svelte';
-	import IconButton from '../../ui/IconButton.svelte';
-	import SectionLabel from '../../ui/SectionLabel.svelte';
+	import Icon from '../../../ui/Icon.svelte';
+	import IconButton from '../../../ui/IconButton.svelte';
+	import SectionLabel from '../../../ui/SectionLabel.svelte';
 	import { clear_history, css_tool, headline, load_sample, replace_input, SAMPLES } from './state.svelte.ts';
 
 	// Left-sidebar context: the stock samples, and recent inputs (kept when an input is

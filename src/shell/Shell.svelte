@@ -47,10 +47,10 @@
 	<div class="section-main box grow min0 hfull" testId="section-main">
 		<MainHeader panel={shown['sidebar-panel']} right={shown['sidebar-right']} />
 		<div class="section-main-body box grow min0" testId="section-main-body">
-			{#if tool.tabs}
+			{#if tool.tabs && tool.tabs.list().length}
 				<Tabs tabs={tool.tabs.list()} value={tool.tabs.value()} onchange={tool.tabs.select} testId="surface-tabs" />
 			{/if}
-			<div class="box grow min0" testId={`tool-${tool.id}`}>
+			<div class="box grow min0" testId={`surface-${tool.id}`}>
 				<tool.component />
 			</div>
 		</div>

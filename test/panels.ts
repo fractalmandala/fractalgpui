@@ -16,7 +16,7 @@ type Mouse = {
 };
 
 load_styles();
-switch_to('css-to-sass');
+switch_to('tools');
 mount_headless(App, { width: 1400, height: 538 });
 const native = get_native() as unknown as Mouse;
 const step = (f: () => void) => {

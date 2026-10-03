@@ -6,33 +6,34 @@ import App from '../src/App.svelte';
 import { palette } from '../src/kernel/commands.svelte.ts';
 import { settings } from '../src/kernel/settings.svelte.ts';
 import { flush, settings_file } from '../src/kernel/storage.svelte.ts';
-import { css_tool } from '../src/surfaces/css-to-sass/state.svelte.ts';
+import { css_tool } from '../src/surfaces/tools/css-to-sass/state.svelte.ts';
 
 load_styles();
 mount_headless(App, { width: 1400, height: 538 });
 
-check('starts on home', !!find_test_id('tool-home'));
-check('nav lists the converter', !!find_test_id('nav-css-to-sass'));
+check('starts on home', !!find_test_id('surface-home'));
+check('nav lists Home and Tools only', !!find_test_id('nav-home') && !!find_test_id('nav-tools') && !find_test_id('nav-css-to-sass'));
 check('status bar shows the tool', all_text().includes('Fractal workbench'));
 
 // home grid
-check('home lists surfaces as cards', !!find_test_id('home-open-css-to-sass'));
+check('home shows Tools as one card', !!find_test_id('home-open-tools') && !find_test_id('home-open-css-to-sass'));
 check('home lists only real surfaces', !all_text().includes('Planned') && !find_test_id('planned-card'));
 check('home carries no style diagnostics', !all_text().includes('declarations dropped') && !all_text().includes('Styles'));
-click_test_id('home-open-css-to-sass');
-check('a home card opens its surface', settings.activeSurface, 'css-to-sass');
+click_test_id('home-open-tools');
+check('a home card opens its surface', settings.activeSurface, 'tools');
 press('cmd-1');
 
 // rail switching
-click_test_id('nav-css-to-sass');
-check('rail switches tools', !!find_test_id('tool-css-to-sass') && !find_test_id('tool-home'));
-check('active tool persisted to settings', settings.activeSurface, 'css-to-sass');
+click_test_id('nav-tools');
+check('nav switches surfaces', !!find_test_id('surface-tools') && !find_test_id('surface-home'));
+check('Tools lists its tools and shows the first', !!find_test_id('tool-item-css-to-sass') && !!find_test_id('tool-css-to-sass'));
+check('active surface persisted to settings', settings.activeSurface, 'tools');
 
 // keymap
 press('cmd-1');
-check('cmd-1 goes home', !!find_test_id('tool-home'));
+check('cmd-1 goes home', !!find_test_id('surface-home'));
 press('cmd-2');
-check('cmd-2 goes to the converter', !!find_test_id('tool-css-to-sass'));
+check('cmd-2 goes to Tools', !!find_test_id('surface-tools'));
 
 // keep-alive: tool state outlives the page
 css_tool.css = '.kept { color: red }';
@@ -49,7 +50,7 @@ type('h o m e');
 check('typing filters', palette.query, 'home');
 check('filtered list has "Go to Home" first', !!find_test_id('cmd-tool.open.home') && !find_test_id('cmd-theme.toggle'));
 press('enter');
-check('enter runs the selection and closes', !palette.open && !!find_test_id('tool-home'));
+check('enter runs the selection and closes', !palette.open && !!find_test_id('surface-home'));
 
 press('cmd-k');
 press('escape');
@@ -74,4 +75,4 @@ const saved = JSON.parse(readFileSync(settings_file(), 'utf8'));
 check('settings.json has version and slots', saved.version === 1 && saved.slots.app.theme === 'light' && saved.slots.app.activeSurface === 'home');
 check('tool state persisted', saved.slots['tool.css-to-sass'].css, '.kept { color: red }');
 
-finish('shell', 24);
+finish('shell', 25);

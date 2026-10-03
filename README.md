@@ -44,7 +44,8 @@ empty containers. Sidebars resize by their splitter (double-click resets), width
 kept per surface, and sidebars that don't fit the window drop out (sidebar-right
 first) without changing your choice.
 
-Surfaces: **Home** (a card per surface) and **CSS → Sass** (paste CSS left, indented
+Surfaces: **Home** (a card per surface) and **Tools** (one surface hosting every tool;
+its left sidebar lists them). Tools: **CSS → Sass** (paste CSS left, indented
 Sass right, an options row for nesting, `@media` folding, comments and indent; samples
 and recent inputs in the left sidebar; a **Diff** tab comparing the input with the Sass
 compiled back to CSS; Copy goes to the macOS clipboard via `pbcopy`). Style-adapter
@@ -62,6 +63,7 @@ warnings show in the status bar (click for detail, or "Show style diagnostics").
 | `src/ui/` | Primitives: `Icon` (Lucide SVGs in `assets/icons`), `IconButton`, `Button`, `Tabs`, `Segmented`, `Toggle`, `Pill`, `Card`, `SectionLabel`, `PanelHeader`, `Splitter`, `Kbd`. |
 | `src/surfaces/<id>/` | One folder per surface: `index.ts` manifest, `state.svelte.ts`, components, `test.ts` (headless), `lib/` (UI-free logic + `*.test.ts`). |
 | `src/surfaces/index.ts` | Nav order. Adding a surface = a folder + one line here. |
+| `src/surfaces/tools/` | The Tools surface: `types.ts` (the `Tool` contract), `registry.ts` (tool order), `state.svelte.ts` (selected tool), and one folder per tool, `tools/<id>/`, laid out like a surface. A tool gives `component` (main body), and optionally `toolbar` (main header), `sidebar` (left body, under the tool list), `tabs`, `commands` (running one opens Tools on that tool), `load()`. Adding a tool = a folder + one line in `registry.ts`. |
 | `src/styles/` | `index.sass` → `_own.sass`, the one place for app-only classes. |
 | `test/` | `harness.ts`, `styles.ts` (strict style check), `ui.ts` (primitives), `layout.ts` (panel state), `panels.ts` (collapse, resize), `shell.ts` (nav, Home, keymap, palette, theme, persistence). |
 | `test.ts` | Runs every headless suite in its own process, then `bun test ./src`. |

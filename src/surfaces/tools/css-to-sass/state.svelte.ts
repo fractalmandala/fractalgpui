@@ -6,9 +6,9 @@
 import { compileString } from 'sass';
 import { css_to_sass, CssParseError, type ConvertResult } from './lib/index.ts';
 import { unified, type Unified } from './lib/diff.ts';
-import { copy_text } from '../../kernel/clipboard.ts';
-import { persisted } from '../../kernel/storage.svelte.ts';
-import { flash } from '../../kernel/status.svelte.ts';
+import { copy_text } from '../../../kernel/clipboard.ts';
+import { persisted } from '../../../kernel/storage.svelte.ts';
+import { flash } from '../../../kernel/status.svelte.ts';
 
 export type Comments = 'silent' | 'loud' | 'drop';
 export type Indent = 'tab' | '2' | '4';

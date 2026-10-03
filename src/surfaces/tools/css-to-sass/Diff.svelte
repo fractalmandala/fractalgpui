@@ -1,5 +1,5 @@
 <script lang="ts">
-	import Pill from '../../ui/Pill.svelte';
+	import Pill from '../../../ui/Pill.svelte';
 	import { css_tool, round_trip } from './state.svelte.ts';
 
 	// Round trip: the input as dart-sass prints it, against the Sass output compiled back.

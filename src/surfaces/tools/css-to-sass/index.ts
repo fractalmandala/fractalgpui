@@ -1,6 +1,6 @@
-import type { Surface } from '../../kernel/types.ts';
+import type { Tool } from '../types.ts';
 import CssToSass from './CssToSass.svelte';
-import Left from './Left.svelte';
+import Sidebar from './Sidebar.svelte';
 import Toolbar from './Toolbar.svelte';
 import { clear, copy_output, css_tool, load_sample, round_trip, type Tab } from './state.svelte.ts';
 
@@ -17,7 +17,7 @@ export default {
 	description: 'Convert CSS to indented Sass, nesting where it is safe.',
 	component: CssToSass,
 	toolbar: Toolbar,
-	sections: { 'sidebar-left': { body: Left } },
+	sidebar: Sidebar,
 	tabs: {
 		list: () => [
 			{ id: 'convert', label: 'Convert' },
@@ -34,4 +34,4 @@ export default {
 		{ id: 'css-to-sass.diff', title: 'Show round-trip diff', run: () => (css_tool.tab = 'diff') },
 		{ id: 'css-to-sass.clear', title: 'Clear input', run: clear }
 	]
-} satisfies Surface;
+} satisfies Tool;

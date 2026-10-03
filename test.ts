@@ -16,9 +16,9 @@ import { fileURLToPath } from 'node:url';
 const root = dirname(fileURLToPath(import.meta.url));
 const cli = join(root, 'node_modules/gpuix-svelte/bin/gpuix-svelte.js');
 
-const tool_tests = readdirSync(join(root, 'src/surfaces'))
-	.map((t) => join(root, 'src/surfaces', t, 'test.ts'))
-	.filter((f) => existsSync(f));
+// src/surfaces/<surface>/test.ts and src/surfaces/tools/<tool>/test.ts
+const tests_in = (dir: string) => readdirSync(join(root, dir)).map((t) => join(root, dir, t, 'test.ts')).filter((f) => existsSync(f));
+const tool_tests = [...tests_in('src/surfaces'), ...tests_in('src/surfaces/tools')];
 const files = [join(root, 'test/styles.ts'), join(root, 'test/ui.ts'), join(root, 'test/layout.ts'), join(root, 'test/shell.ts'), join(root, 'test/panels.ts'), ...tool_tests];
 
 const runs: { name: string; cmd: string; args: string[]; cwd: string }[] = [

@@ -1,6 +1,6 @@
 <script lang="ts">
-	import Segmented from '../../ui/Segmented.svelte';
-	import Toggle from '../../ui/Toggle.svelte';
+	import Segmented from '../../../ui/Segmented.svelte';
+	import Toggle from '../../../ui/Toggle.svelte';
 	import { css_tool, type Comments, type Indent } from './state.svelte.ts';
 
 	// The converter's options, as one compact row above the panes.
