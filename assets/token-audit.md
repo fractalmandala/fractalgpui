@@ -326,6 +326,38 @@ The editor sits in section-sidebar-right on every surface (⌘I); its code is in
 
 The defaults (in bold) are today's look. Choices persist in the `style` settings slot. Reset and "Copy as Sass" (the changed tokens as `$name: value`) sit at the bottom of the editor.
 
+**Buttons and radii.** These read app role tokens defined in `_own.sass`. Each one defaults to the fractalstyler token the rule read before, so the look is unchanged:
+
+| Role token | Default source |
+|---|---|
+| `--wb-btn-bg` | `--bg-raised` |
+| `--wb-btn-fg` | `--text-primary` |
+| `--wb-btn-hover-bg` | `--state-hover` |
+| `--wb-btn-primary-bg` | `--accent` |
+| `--wb-btn-primary-fg` | `--on-accent` |
+| `--wb-btn-primary-hover-bg` | `--accent-hover` |
+| `--wb-btn-height` | `--control-h-bs` |
+| `--wb-btn-pad-x` | `--space-md` |
+| `--wb-radius-control` | `--radius-md` |
+| `--wb-radius-card` | `--radius-md` |
+| `--wb-radius-pill` | `--radius-full` |
+
+The editor picks which existing token each role reads. "Auto" means the default source.
+- Colour choices are other palette tokens: `--bg-button`, `--bg-sunken`, `--bg-surface`, `--text-secondary`, `--state-selected`, greenpop and orangepop steps, `--white-fixed`, `--black-fixed`.
+- Button height choices are `--height-md`, `--height-bs`, `--control-h-bs` and `--control-h-lg`.
+- Horizontal padding choices are `--space-xs` to `--space-lg`.
+- Radius choices are `--radius-xs` to `--radius-full`, per role.
+- Vertical button padding is not offered: buttons have a fixed height and centre their label, so it would have no effect.
+
+**Precedence:**
+- An explicit button height or padding overrides Density for buttons.
+- An explicit radius overrides Corners for that role.
+- Explicit choices take the token's own, unshifted value.
+- On "Auto" a role follows its default source after the Density / Corners shift.
+- Button colours resolve after the colour-role and Accent choices, so an "Auto" primary background follows the Accent control.
+
+**Textarea vs code line pitch.** GPUI's `<textarea>` puts its rows 26px apart whatever the font-size, line-height, `theme` or inherited style. This was measured: 1, 5 and 10 rows give 26, 130 and 260px. `<code>` does honour `line-height`. So the `<code>` panes take `.wb-code` (mono, `--text-sm`, `line-height: var(--wb-textarea-row)` = 26px), and the CSS ⇄ Sass rows are computed from that pitch. No fractalstyler token is 26px (`--text-xl` is 25), so `--wb-textarea-row` is a documented no-token constant: it mirrors GPUI.
+
 One limit: line-heights that fractalstyler bakes into px at build time (e.g. `.text-body`) do not follow a text-size change.
 
 The proposal below was the starting point. The implemented shift differs in one place: at "small", body text uses `--text-xs` as well.

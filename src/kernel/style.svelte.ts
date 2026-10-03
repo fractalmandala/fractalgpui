@@ -11,6 +11,16 @@
  * - Corners: sharp / soft / round shifts `--radius-xs` … `--radius-lg`.
  * The ends of a scale stay put (nothing exists below `--space-xs`).
  *
+ * Buttons and radii read app role tokens (`--wb-btn-*`, `--wb-radius-*`, defined in
+ * `_own.sass` as the fractalstyler token they used before). Each control picks which
+ * existing token a role reads; `auto` keeps the default source.
+ *
+ * Precedence: an explicit button height / padding overrides Density for buttons, and
+ * an explicit radius overrides Corners for that role; both take the token's own
+ * (unshifted) value. On `auto` the role follows its default token *after* the
+ * Density / Corners shift. Button colours read the chosen token after the colour-role
+ * and accent choices, so "Accent" follows the Accent control.
+ *
  * Colour roles choose between the app's palette (`_own.sass`, today's look) and
  * fractalstyler's own value for the same role tokens; the accent between the app's
  * greenpop, fractalstyler's orangepop, and fractalstyler's per-mode theme colour.
@@ -26,15 +36,44 @@ export type Palette = 'app' | 'fractalstyler';
 export type Accent = 'greenpop' | 'orangepop' | 'fractalstyler';
 export type Role = 'surface' | 'text' | 'border' | 'hover' | 'selected';
 
+export type ButtonSlot = 'bg' | 'fg' | 'hover' | 'primaryBg' | 'primaryFg' | 'primaryHover';
+export type RadiusRole = 'control' | 'card' | 'pill';
+export const AUTO = 'auto';
+
+/** Each button slot: its role token, its default source ('Auto'), and the other tokens it may read. */
+export const BUTTON_SLOTS: Record<ButtonSlot, { token: string; source: string; choices: { value: string; label: string }[] }> = {
+	bg: { token: 'wb-btn-bg', source: 'bg-raised', choices: [{ value: 'bg-button', label: 'Button' }, { value: 'bg-sunken', label: 'Sunken' }, { value: 'bg-surface', label: 'Surface' }] },
+	fg: { token: 'wb-btn-fg', source: 'text-primary', choices: [{ value: 'text-secondary', label: 'Secondary' }, { value: 'accent', label: 'Accent' }] },
+	hover: { token: 'wb-btn-hover-bg', source: 'state-hover', choices: [{ value: 'state-selected', label: 'Selected' }, { value: 'bg-sunken', label: 'Sunken' }] },
+	primaryBg: { token: 'wb-btn-primary-bg', source: 'accent', choices: [{ value: 'greenpop4', label: 'Green 4' }, { value: 'orangepop1', label: 'Orange' }, { value: 'black-fixed', label: 'Ink' }] },
+	primaryFg: { token: 'wb-btn-primary-fg', source: 'on-accent', choices: [{ value: 'white-fixed', label: 'White' }, { value: 'black-fixed', label: 'Ink' }] },
+	primaryHover: { token: 'wb-btn-primary-hover-bg', source: 'accent-hover', choices: [{ value: 'greenpop3', label: 'Green 3' }, { value: 'orangepop5', label: 'Orange 5' }] }
+};
+/** Size slots: role token, default source (shifted by Density / Corners on auto), and choices. */
+export const SIZE_SLOTS = {
+	height: { token: 'wb-btn-height', source: 'control-h-bs', choices: ['height-md', 'height-bs', 'control-h-bs', 'control-h-lg'] },
+	padX: { token: 'wb-btn-pad-x', source: 'space-md', choices: ['space-xs', 'space-sm', 'space-md', 'space-bs', 'space-lg'] }
+} as const;
+export const RADIUS_ROLES: Record<RadiusRole, { token: string; source: string }> = {
+	control: { token: 'wb-radius-control', source: 'radius-md' },
+	card: { token: 'wb-radius-card', source: 'radius-md' },
+	pill: { token: 'wb-radius-pill', source: 'radius-full' }
+};
+export const RADIUS_CHOICES = ['radius-xs', 'radius-sm', 'radius-md', 'radius-bs', 'radius-lg', 'radius-full'];
+
 export const DEFAULTS = {
 	text: 'regular' as TextStep,
 	density: 'compact' as Density,
 	corners: 'soft' as Corners,
 	accent: 'greenpop' as Accent,
-	roles: { surface: 'app', text: 'app', border: 'app', hover: 'app', selected: 'app' } as Record<Role, Palette>
+	roles: { surface: 'app', text: 'app', border: 'app', hover: 'app', selected: 'app' } as Record<Role, Palette>,
+	buttons: { bg: AUTO, fg: AUTO, hover: AUTO, primaryBg: AUTO, primaryFg: AUTO, primaryHover: AUTO } as Record<ButtonSlot, string>,
+	sizes: { height: AUTO, padX: AUTO } as Record<keyof typeof SIZE_SLOTS, string>,
+	radii: { control: AUTO, card: AUTO, pill: AUTO } as Record<RadiusRole, string>
 };
 
-export const style = persisted('style', { ...DEFAULTS, roles: { ...DEFAULTS.roles } });
+const fresh = () => ({ ...DEFAULTS, roles: { ...DEFAULTS.roles }, buttons: { ...DEFAULTS.buttons }, sizes: { ...DEFAULTS.sizes }, radii: { ...DEFAULTS.radii } });
+export const style = persisted('style', fresh());
 
 export const SCALES = {
 	text: ['text-xs', 'text-sm', 'text-md', 'text-bs', 'text-lg', 'text-xl', 'text-2xl', 'text-3xl', 'text-4xl', 'text-5xl'],
@@ -91,15 +130,30 @@ export function styled_tokens(mode: Mode, s: typeof style = style, tokens = desi
 		const [accent, hover, soft] = ACCENTS[s.accent](base, tokens);
 		if (accent) Object.assign(out, { accent, 'accent-hover': hover, 'accent-soft': soft, 'theme-color': accent, 'theme-color-alt': hover });
 	}
+	// Role tokens last, so they see every choice above (see the precedence note).
+	const pick = (name: string, from: TokenMap) => from[name] ?? out[name];
+	for (const slot of Object.keys(BUTTON_SLOTS) as ButtonSlot[]) {
+		const { token, source } = BUTTON_SLOTS[slot];
+		const chosen = s.buttons?.[slot] ?? AUTO;
+		out[token] = out[chosen === AUTO ? source : chosen] ?? out[token];
+	}
+	for (const key of Object.keys(SIZE_SLOTS) as (keyof typeof SIZE_SLOTS)[]) {
+		const { token, source } = SIZE_SLOTS[key];
+		const chosen = s.sizes?.[key] ?? AUTO;
+		out[token] = chosen === AUTO ? out[source] : pick(chosen, tokens);
+	}
+	for (const role of Object.keys(RADIUS_ROLES) as RadiusRole[]) {
+		const { token, source } = RADIUS_ROLES[role];
+		const chosen = s.radii?.[role] ?? AUTO;
+		out[token] = chosen === AUTO ? out[source] : pick(chosen, tokens);
+	}
 	return out;
 }
 
-export const is_default = (s: typeof style = style) =>
-	s.text === DEFAULTS.text && s.density === DEFAULTS.density && s.corners === DEFAULTS.corners && s.accent === DEFAULTS.accent &&
-	(Object.keys(DEFAULTS.roles) as Role[]).every((r) => s.roles[r] === DEFAULTS.roles[r]);
+export const is_default = (s: typeof style = style) => JSON.stringify(s) === JSON.stringify(fresh());
 
 export function reset_style() {
-	Object.assign(style, { ...DEFAULTS, roles: { ...DEFAULTS.roles } });
+	Object.assign(style, fresh());
 }
 
 /** The tokens the editor changed from the app's defaults, as Sass variables. */

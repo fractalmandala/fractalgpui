@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { design } from '../../../kernel/design.svelte.ts';
 	import { win } from '../../../kernel/window.svelte.ts';
 	import Diff from './Diff.svelte';
 	import Options from './Options.svelte';
@@ -9,9 +10,12 @@
 	const outcome = $derived(forward ? convert(css_tool) : null);
 	const compiled = $derived(forward ? null : compile_sass(css_tool));
 
-	// GPUI's textarea sizes to its rows (20px each) and scrolls inside, so fill the
-	// pane from the window height (polled by the shell; there is no resize event).
-	const rows = $derived(Math.max(6, Math.min(60, Math.floor((win.height - 240) / 20))));
+	// GPUI's textarea sizes to its rows and scrolls inside, so fill the pane from the
+	// window height (polled by the shell; there is no resize event). Its row pitch is
+	// fixed (26px, whatever the font-size or line-height); the output <code> takes the
+	// same pitch through .wb-code so the two panes' lines sit level.
+	const row = $derived(parseFloat(design.tokens.light['wb-textarea-row'] ?? '26') || 26);
+	const rows = $derived(Math.max(6, Math.min(60, Math.floor((win.height - 240) / row))));
 
 	const summary = $derived.by(() => {
 		if (outcome?.ok) {
@@ -63,13 +67,13 @@
 				<!-- <code> paints its base text in `color` (default: a pale grey meant for dark backgrounds). -->
 				{#if outcome}
 					{#if outcome.ok}
-						<code class="mono text-sm text-primary shrink-0" testId="sass-output" code={outcome.result.sass} language="sass" showLineNumbers></code>
+						<code class="wb-code text-primary shrink-0" testId="sass-output" code={outcome.result.sass} language="sass" showLineNumbers></code>
 					{:else}
 						<text class="text-sm text-danger" testId="sass-error">{outcome.error}</text>
 					{/if}
 				{:else if compiled}
 					{#if compiled.ok}
-						<code class="mono text-sm text-primary shrink-0" testId="css-output" code={compiled.css} language="css" showLineNumbers></code>
+						<code class="wb-code text-primary shrink-0" testId="css-output" code={compiled.css} language="css" showLineNumbers></code>
 					{:else}
 						<text class="text-sm text-danger" testId="css-error">{compiled.line ? `Line ${compiled.line}: ` : ''}{compiled.error}</text>
 					{/if}

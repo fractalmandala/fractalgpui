@@ -1,9 +1,6 @@
 <script lang="ts">
-	import { copy_text } from '../kernel/clipboard.ts';
-	import { settings } from '../kernel/settings.svelte.ts';
-	import { flash } from '../kernel/status.svelte.ts';
-	import { as_sass, is_default, reset_style, style, type Accent, type Corners, type Density, type Palette, type Role, type TextStep } from '../kernel/style.svelte.ts';
-	import Button from '../ui/Button.svelte';
+	import { design } from '../kernel/design.svelte.ts';
+	import { AUTO, BUTTON_SLOTS, RADIUS_CHOICES, SIZE_SLOTS, style, type Accent, type ButtonSlot, type Corners, type Density, type Palette, type RadiusRole, type Role, type TextStep } from '../kernel/style.svelte.ts';
 	import SectionLabel from '../ui/SectionLabel.svelte';
 	import Segmented from '../ui/Segmented.svelte';
 
@@ -42,10 +39,25 @@
 		{ role: 'selected', label: 'Selected' }
 	];
 
-	function copy_sass() {
-		if (copy_text(as_sass(settings.theme))) flash('Copied the style as Sass variables', 'success');
-		else flash('Could not reach the clipboard (pbcopy)', 'danger');
-	}
+	// Buttons: which existing token each slot reads ('Auto' = its default source).
+	const BUTTONS: { slot: ButtonSlot; label: string }[] = [
+		{ slot: 'bg', label: 'Button background' },
+		{ slot: 'fg', label: 'Button text' },
+		{ slot: 'hover', label: 'Button hover' },
+		{ slot: 'primaryBg', label: 'Primary background' },
+		{ slot: 'primaryFg', label: 'Primary text' },
+		{ slot: 'primaryHover', label: 'Primary hover' }
+	];
+	const auto = (choices: { value: string; label: string }[]) => [{ value: AUTO, label: 'Auto' }, ...choices];
+	// Sizes and radii: labelled by the token's px value (light map; sizes are mode-invariant).
+	const px = (name: string) => (design.tokens.light[name] ?? '').replace(/px$/, '').replace(/^9999$/, 'Full');
+	const sized = (names: readonly string[]) => auto(names.map((n) => ({ value: n, label: px(n) })));
+	const RADII: { role: RadiusRole; label: string }[] = [
+		{ role: 'control', label: 'Controls' },
+		{ role: 'card', label: 'Cards' },
+		{ role: 'pill', label: 'Pills' }
+	];
+
 </script>
 
 <div class="box gap-lg pad-md" testId="style-editor">
@@ -74,8 +86,25 @@
 			</div>
 		{/each}
 	</div>
-	<div class="row ycenter gap-sm">
-		<Button label="Reset" icon="refresh-cw" active={!is_default()} testId="style-reset" onclick={reset_style} />
-		<Button label="Copy as Sass" icon="copy" variant="ghost" testId="style-copy" onclick={copy_sass} />
+	<div class="box gap-sm">
+		<SectionLabel label="Buttons" />
+		{#each BUTTONS as b (b.slot)}
+			<text class="text-xs text-secondary">{b.label}</text>
+			<Segmented options={auto(BUTTON_SLOTS[b.slot].choices)} value={style.buttons[b.slot]} testId={`style-btn-${b.slot}`} onchange={(v) => (style.buttons[b.slot] = v)} />
+		{/each}
+	</div>
+	<div class="box gap-sm">
+		<SectionLabel label="Button size (overrides Density)" />
+		<text class="text-xs text-secondary">Height</text>
+		<Segmented options={sized(SIZE_SLOTS.height.choices)} value={style.sizes.height} testId="style-btn-height" onchange={(v) => (style.sizes.height = v)} />
+		<text class="text-xs text-secondary">Horizontal padding</text>
+		<Segmented options={sized(SIZE_SLOTS.padX.choices)} value={style.sizes.padX} testId="style-btn-padx" onchange={(v) => (style.sizes.padX = v)} />
+	</div>
+	<div class="box gap-sm">
+		<SectionLabel label="Radius (overrides Corners)" />
+		{#each RADII as r (r.role)}
+			<text class="text-xs text-secondary">{r.label}</text>
+			<Segmented options={sized(RADIUS_CHOICES)} value={style.radii[r.role]} testId={`style-radius-${r.role}`} onchange={(v) => (style.radii[r.role] = v)} />
+		{/each}
 	</div>
 </div>

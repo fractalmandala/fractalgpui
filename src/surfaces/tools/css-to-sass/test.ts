@@ -1,12 +1,12 @@
 import '../../../../test/harness.ts';
-import { check, click_test_id, find_test_id, finish, focus, mount_headless, painted, screenshot, type } from 'gpuix-svelte/test';
+import { bounds, check, click_test_id, find_test_id, finish, focus, mount_headless, painted, screenshot, type } from 'gpuix-svelte/test';
 import { load_styles } from '../../../../build/styles.ts';
 import App from '../../../App.svelte';
 import { last_copied } from '../../../kernel/clipboard.ts';
 import { all_commands } from '../../../kernel/commands.svelte.ts';
 import { settings, switch_to } from '../../../kernel/settings.svelte.ts';
 import { status } from '../../../kernel/status.svelte.ts';
-import { css_tool, detect_syntax, history_of, headline, SAMPLE, SAMPLES, SASS_SAMPLE, SASS_SAMPLES } from './state.svelte.ts';
+import { convert, css_tool, detect_syntax, history_of, headline, SAMPLE, SAMPLES, SASS_SAMPLE, SASS_SAMPLES } from './state.svelte.ts';
 
 load_styles();
 css_tool.css = '.a { color: red }\n.a .b { margin: 0 }';
@@ -51,6 +51,14 @@ check('typed CSS reaches the output', painted().includes('.x') && painted().incl
 click_test_id('sample');
 check('sample loads', css_tool.css, SAMPLE);
 check('first output line (a comment) is painted, not clipped', painted().includes('// Buttons'));
+{
+	// Lines sit level: the textarea's fixed 26px row pitch, and the <code> output on the same pitch.
+	const input = bounds(find_test_id('css-input')!)!;
+	const out = bounds(find_test_id('sass-output')!)!;
+	const lines = (convert().ok ? (convert() as { result: { sass: string } }).result.sass : '').split('\n').length;
+	check('code output uses the textarea row pitch (26px)', Math.round(out[3] / lines), 26);
+	check('textarea rows are 26px (inside its 8px padding)', (input[3] - 16) % 26, 0);
+}
 if (process.env.FRACTALGPUI_SHOTS) screenshot(`${process.env.FRACTALGPUI_SHOTS}/css-to-sass.png`);
 
 // left sidebar: samples and recent inputs
@@ -127,4 +135,4 @@ if (process.env.FRACTALGPUI_SHOTS) screenshot(`${process.env.FRACTALGPUI_SHOTS}/
 click_test_id('opt-direction-css-to-sass');
 check('direction toggles back', css_tool.direction, 'css-to-sass');
 
-finish('css-to-sass', 42);
+finish('css-to-sass', 44);

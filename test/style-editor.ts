@@ -46,6 +46,49 @@ check('small text narrows it', w('sample') < base.btnW);
 click_test_id('style-text-regular');
 check('regular restores it', w('sample'), base.btnW);
 
+// The editor body scrolls; controls below the 538px headless viewport are driven through the
+// same state their onchange writes, after checking the control is rendered.
+const pick = (group: 'sizes' | 'radii' | 'buttons', key: string, value: string) => {
+	const id = group === 'sizes' ? `style-btn-${key === 'padX' ? 'padx' : key}-${value}` : group === 'radii' ? `style-radius-${key}-${value}` : `style-btn-${key}-${value}`;
+	if (!find_test_id(id)) throw new Error(`no control ${id}`);
+	(style[group] as Record<string, string>)[key] = value;
+	click_test_id('style-text-regular'); // settle
+};
+// Button size: explicit controls override Density for buttons
+click_test_id('style-density-spacious');
+pick('sizes', 'height', 'height-bs');
+check('explicit button height (--height-bs) wins over Spacious', [h('sample') - base.btn, h('opt-indent-tab') - base.seg], [-8, 8]);
+pick('sizes', 'height', 'auto');
+check('auto button height follows Density again', h('sample') - base.btn, 6);
+click_test_id('style-density-compact');
+pick('sizes', 'padX', 'space-lg');
+check('explicit padding (--space-lg 24 vs --space-md 12) widens the button by 24', w('sample') - base.btnW, 24);
+pick('sizes', 'padX', 'auto');
+check('auto padding restores it', w('sample'), base.btnW);
+
+// Button colours read the chosen token (after the colour/accent choices)
+const T = () => styled_tokens('light');
+check('defaults: buttons read raised / accent', [T()['wb-btn-bg'], T()['wb-btn-primary-bg']], [design.tokens.light['bg-raised'], design.tokens.light.accent]);
+pick('buttons', 'primaryBg', 'black-fixed');
+pick('buttons', 'primaryFg', 'white-fixed');
+pick('buttons', 'bg', 'bg-sunken');
+pick('buttons', 'hover', 'state-selected');
+check('button colour choices apply', [T()['wb-btn-primary-bg'], T()['wb-btn-primary-fg'], T()['wb-btn-bg'], T()['wb-btn-hover-bg']], [design.tokens.light['black-fixed'], design.tokens.light['white-fixed'], design.tokens.light['bg-sunken'], design.tokens.light['state-selected']]);
+pick('buttons', 'primaryBg', 'auto');
+click_test_id('style-accent-orangepop');
+check('auto primary background follows the Accent control', T()['wb-btn-primary-bg'], design.tokens.light.orangepop1);
+click_test_id('style-accent-greenpop');
+
+// Radius per role: explicit wins over Corners; auto follows the shifted scale
+click_test_id('style-corners-round');
+check('auto radii follow Corners', [T()['wb-radius-control'], T()['wb-radius-card']], [design.tokens.light['radius-bs'], design.tokens.light['radius-bs']]);
+pick('radii', 'control', 'radius-sm');
+pick('radii', 'pill', 'radius-xs');
+check('explicit radii take the token\'s own value under Round', [T()['wb-radius-control'], T()['wb-radius-pill']], [design.tokens.light['radius-sm'], design.tokens.light['radius-xs']]);
+pick('radii', 'control', 'auto');
+pick('radii', 'pill', 'auto');
+click_test_id('style-corners-soft');
+
 // Corners and colours: token re-pointing (radii and colours have no bounds to measure)
 click_test_id('style-corners-round');
 check('round corners: --radius-md takes --radius-bs', styled_tokens('light')['radius-md'], design.tokens.light['radius-bs']);
@@ -75,4 +118,4 @@ click_test_id('style-reset');
 check('reset returns to the defaults', [style.text, style.density, style.corners, style.accent, style.roles.surface], ['regular', 'compact', 'soft', 'greenpop', 'app']);
 check('reset restores the app token map', JSON.stringify(styled_tokens('light')), JSON.stringify(design.tokens.light));
 
-finish('style-editor', 20);
+finish('style-editor', 29);

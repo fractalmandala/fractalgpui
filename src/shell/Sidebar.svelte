@@ -4,6 +4,7 @@
 	import IconButton from '../ui/IconButton.svelte';
 	import Splitter from '../ui/Splitter.svelte';
 	import StyleEditor from './StyleEditor.svelte';
+	import StyleHeader from './StyleHeader.svelte';
 
 	// section-sidebar-panel / section-sidebar-right: a header (the surface's header, if
 	// any, and a collapse button) and a body (the surface's, if any), with a splitter on
@@ -31,7 +32,7 @@
 		class:section-sidebar-right-header={region === 'sidebar-right'}
 	>
 		<div class="row ycenter grow min0">
-			{#if Header}<Header />{:else if region === 'sidebar-right'}<text class="text-sm weight-600 text-primary truncate">Style</text>{/if}
+			{#if Header}<Header />{:else if region === 'sidebar-right'}<StyleHeader />{/if}
 		</div>
 		<IconButton icon="x" testId={`${region}-collapse`} onclick={() => toggle(region, surface)} />
 	</div>

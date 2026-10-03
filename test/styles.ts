@@ -50,6 +50,6 @@ check('_own.sass: no literal px sizes outside the documented no-token cases', li
 const missing = [...vars].filter((v) => light[v] === undefined || dark[v] === undefined);
 check('every var() in _own.sass is in the runtime token map (both modes)', missing, []);
 const own_text = build.rules.filter((r) => r.classes.includes('wb-btn') && r.classes.length === 1).map((r) => ('css' in r ? r.css : '')).join(';');
-check('own rules keep token vars live for set_css_vars', /height: var\(--control-h-bs\)/.test(own_text) && /font-size: var\(--text-sm\)/.test(own_text), true);
+check('own rules keep token vars live for set_css_vars', /height: var\(--wb-btn-height\)/.test(own_text) && /font-size: var\(--text-sm\)/.test(own_text), true);
 
 finish('styles', 16);
