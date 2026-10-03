@@ -19,7 +19,7 @@ const cli = join(root, 'node_modules/gpuix-svelte/bin/gpuix-svelte.js');
 const tool_tests = readdirSync(join(root, 'src/tools'))
 	.map((t) => join(root, 'src/tools', t, 'test.ts'))
 	.filter((f) => existsSync(f));
-const files = [join(root, 'test/styles.ts'), join(root, 'test/shell.ts'), ...tool_tests];
+const files = [join(root, 'test/styles.ts'), join(root, 'test/ui.ts'), join(root, 'test/shell.ts'), ...tool_tests];
 
 const runs: { name: string; cmd: string; args: string[]; cwd: string }[] = [
 	...files.map((f) => ({ name: relative(root, f), cmd: process.execPath, args: [cli, '--bun', f], cwd: root })),

@@ -32,7 +32,7 @@
 		<text class="text-xs text-muted weight-600">TOOLS</text>
 		<div class="row wrap gap-sm">
 			{#each tools as tool (tool.id)}
-				<div class="wb-card box gap-xs pad-md raised border radius-md" hitbox="self" testId={`home-open-${tool.id}`} onclick={() => switch_to(tool.id)}>
+				<div class="wb-card clickable box gap-xs" hitbox="self" testId={`home-open-${tool.id}`} onclick={() => switch_to(tool.id)}>
 					<div class="row ycenter gap-sm">
 						<div class="wb-glyph row xcenter ycenter radius-xs text-xs weight-600"><text>{tool.glyph}</text></div>
 						<text class="text-md weight-600">{tool.title}</text>
