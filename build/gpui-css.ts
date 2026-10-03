@@ -312,12 +312,17 @@ export interface TranslateOptions {
 	source: string;
 	tokens: TokenSets;
 	/**
-	 * Keep every `var(--token)` as a runtime variable instead of inlining the
-	 * mode-invariant ones, so a later `set_css_vars` repaints this sheet live (the
-	 * app's own sheet; values are still validated against both modes).
+	 * Keep `var(--token)`s as runtime variables instead of inlining the mode-invariant
+	 * ones, so a later `set_css_vars` (the style editor) repaints these rules live.
+	 * Only for sizes and colours (LIVE_PROPS) whose value needs no build-time
+	 * reduction (no calc/rem); everything else is inlined as before. Values are still
+	 * validated against both modes.
 	 */
 	live?: boolean;
 }
+
+/** Properties whose `var()`s may stay live: their values reach GPUI as written. */
+const LIVE_PROPS = /^(font-size|(padding|margin)(-(top|right|bottom|left|inline|block|inline-start|inline-end))?|gap|row-gap|column-gap|(min-|max-)?(width|height)|border(-(top|bottom)-(left|right))?-radius|color|background(-color)?|border(-(top|right|bottom|left))?-color)$/;
 
 const weight = (rule: ClassRule) => rule.classes.length * 2 + (rule.tag === null ? 0 : 1);
 
@@ -327,7 +332,13 @@ export function translate_css(css: string, { source, tokens, live = false }: Tra
 	const defined = new Set<string>();
 
 	const runtime = (value: string, mode: 'light' | 'dark') => reduce(substitute(value, (name) => tokens[mode][name]));
-	const inline = (value: string) => (live ? value : reduce(substitute(value, (name) => tokens.invariant[name])));
+	const inline = (value: string) => reduce(substitute(value, (name) => tokens.invariant[name]));
+	/** The value as written when it can stay live, else inlined. */
+	const resolve = (prop: string, value: string) => {
+		if (!live || !value.includes('var(') || !LIVE_PROPS.test(prop)) return inline(value);
+		const sub = substitute(value, (name) => tokens.invariant[name]);
+		return reduce(sub) === sub ? value : inline(value);
+	};
 
 	const lose = (selector: string, kind: Loss['kind'], detail: string, reason: string) =>
 		losses.push({ selector, classes: classes_in(selector), kind, detail, reason, source });
@@ -369,12 +380,12 @@ export function translate_css(css: string, { source, tokens, live = false }: Tra
 			const decls = node.children.filter((c): c is Declaration => c.type === 'decl' && !c.prop.startsWith('--'));
 			// A font-size in the same rule lets a unitless line-height become px.
 			const fs = decls.find((d) => d.prop === 'font-size');
-			const fs_value = fs ? (live ? runtime(fs.value, 'light') : inline(fs.value)) : null;
+			const fs_value = fs ? inline(fs.value) : null;
 			const font_px = fs_value && PX_OR_NUM.test(fs_value) ? parseFloat(fs_value) : null;
 
 			const out: string[] = [];
 			for (const d of decls) {
-				const value = inline(d.value);
+				const value = resolve(d.prop, d.value);
 				const rewritten = rewrite(d.prop, value, font_px);
 				if (rewritten.loss) {
 					lose(node.selector, 'declaration', `${d.prop}: ${d.value}`, rewritten.loss);

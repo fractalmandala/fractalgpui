@@ -60,7 +60,7 @@ click_test_id('toggle-sidebar-panel');
 click_test_id('toggle-sidebar-right');
 check('the header toggles open them', [has('section-sidebar-panel'), has('section-sidebar-right')], [true, true]);
 check('sidebars start at their default widths', [near(width('section-sidebar-left'), 280), near(width('section-sidebar-panel'), 280), near(width('section-sidebar-right'), 280)], [true, true, true]);
-check('sidebars are empty containers unless the surface fills them', [has('section-sidebar-panel-body'), has('section-sidebar-right-body'), all_text_in('section-sidebar-panel').length, all_text_in('section-sidebar-right').length], [true, true, 0, 0]);
+check('sidebar-panel is an empty container; sidebar-right holds the style editor', [has('section-sidebar-panel-body'), has('section-sidebar-right-body'), all_text_in('section-sidebar-panel').length, has('style-editor')], [true, true, 0, true]);
 check('main is not collapsible', !has('section-main-collapse') && !has('toggle-section-main'));
 
 // collapse

@@ -3,6 +3,7 @@
  * (the shell calls it on mount; a hot remount finds it already installed).
  */
 
+import { reset_style } from './style.svelte.ts';
 import { SURFACES } from '../surfaces/index.ts';
 import { close_palette, open_palette, palette, register } from './commands.svelte.ts';
 import { design } from './design.svelte.ts';
@@ -56,6 +57,7 @@ export function install() {
 		{ id: 'layout.sidebar-panel', title: 'Toggle sidebar panel', group: 'View', keys: 'cmd-j', run: () => toggle('sidebar-panel', active_surface()) },
 		{ id: 'layout.sidebar-right', title: 'Toggle right sidebar', group: 'View', keys: 'cmd-i', run: () => toggle('sidebar-right', active_surface()) },
 		{ id: 'layout.all', title: 'Toggle all panels', group: 'View', keys: 'cmd-\\', run: () => toggle_all(active_surface()) },
+		{ id: 'style.reset', title: 'Reset style to defaults', group: 'Style', run: reset_style },
 		{ id: 'diagnostics.styles', title: 'Show style diagnostics', group: 'App', run: show_style_diagnostics },
 		{ id: 'tabs.next', title: 'Next tab', group: 'View', keys: 'ctrl-tab', run: () => cycle_tab(1), enabled: () => !!active_surface().tabs },
 		{ id: 'tabs.previous', title: 'Previous tab', group: 'View', keys: 'ctrl-shift-tab', run: () => cycle_tab(-1), enabled: () => !!active_surface().tabs }

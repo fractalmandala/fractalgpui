@@ -5,9 +5,9 @@
  *                       ├→ tokens.ts (flatten)├→ design.tokens (light/dark) → set_css_vars
  *   src/styles (_own)  ─┘   gpui-css.ts ──────┴→ losses (the strict check reads these)
  *
- * The app's own sheet keeps its `var(--token)`s live (resolved by set_css_vars at
- * runtime), so a token edit repaints it without a rebuild; fractalstyler's sheets
- * get their mode-invariant tokens inlined.
+ * Sizes and colours keep their `var(--token)`s live (resolved by set_css_vars at
+ * runtime), so the style editor repaints every sheet without a rebuild; anything
+ * needing build-time reduction (calc, rem) is inlined.
  *
  * Components carry plain `class="…"` and no `<style>` block (fractalstyler's
  * closed world). App-only classes live in `src/styles/_own.sass`.
@@ -30,6 +30,8 @@ export const APP_STYLES = fileURLToPath(new URL('../src/styles/index.sass', impo
 export interface StyleBuild {
 	fractalstyler: FractalstylerBuild;
 	tokens: TokenSets;
+	/** fractalstyler's tokens without the app's `_own.sass` overrides. */
+	base: TokenSets;
 	rules: ClassRule[];
 	losses: Loss[];
 	/** Every class defined by fractalstyler or the app (intact or not). */
@@ -59,15 +61,21 @@ export function build_styles({ prune = true, fractalstylerDir, appStyles = APP_S
 
 	// Tokens first: fractalstyler's, then the app's additions (later wins).
 	const raw = empty_raw();
-	for (const sheet of fs.sheets) collect_tokens(sheet.css, raw);
+	const fs_raw = empty_raw();
+	for (const sheet of fs.sheets) {
+		collect_tokens(sheet.css, raw);
+		collect_tokens(sheet.css, fs_raw);
+	}
 	collect_tokens(own_css, raw);
 	const tokens = flatten(raw);
+	// fractalstyler's own values, before the app's overrides (the style editor offers them).
+	const base = flatten(fs_raw);
 
 	const rules: ClassRule[] = [];
 	const losses: Loss[] = [];
 	const defined = new Set<string>();
 	for (const sheet of [...fs.sheets, { source: OWN, css: own_css }]) {
-		const t = translate_css(sheet.css, { source: sheet.source, tokens, live: sheet.source === OWN });
+		const t = translate_css(sheet.css, { source: sheet.source, tokens, live: true });
 		rules.push(...t.rules);
 		losses.push(...t.losses);
 		for (const c of t.defined) defined.add(c);
@@ -78,7 +86,7 @@ export function build_styles({ prune = true, fractalstylerDir, appStyles = APP_S
 	const sorted = sort_rules(rules);
 	const kept = prune ? sorted.filter((r) => r.classes.every((c) => used.has(c))) : sorted;
 
-	return { fractalstyler: fs, tokens, rules: kept, losses, defined, used, tags, registered: kept.length, warnings: [...fs.warnings] };
+	return { fractalstyler: fs, tokens, base, rules: kept, losses, defined, used, tags, registered: kept.length, warnings: [...fs.warnings] };
 }
 
 let registered = new Set<string>();
@@ -105,6 +113,7 @@ export function load_styles(options: BuildOptions = {}): StyleBuild {
 	const build = build_styles(options);
 	register(build.rules);
 	design.tokens = { light: build.tokens.light, dark: build.tokens.dark };
+	design.base = { light: build.base.light, dark: build.base.dark };
 	design.report = { mode: build.fractalstyler.mode, registered: build.registered, losses: build.losses.length, warnings: build.warnings };
 	for (const w of build.warnings) console.warn(`[fractalgpui] ${w}`);
 	last = build;

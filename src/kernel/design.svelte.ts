@@ -18,6 +18,8 @@ export interface StyleReport {
 
 class Design {
 	tokens = $state.raw<{ light: TokenMap; dark: TokenMap }>({ light: {}, dark: {} });
+	/** fractalstyler's own values (no app overrides): what the style editor's 'fractalstyler' colour choices read. */
+	base = $state.raw<{ light: TokenMap; dark: TokenMap }>({ light: {}, dark: {} });
 	report = $state.raw<StyleReport | null>(null);
 }
 

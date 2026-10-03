@@ -3,10 +3,13 @@
 	import { active_surface } from '../kernel/surfaces.svelte.ts';
 	import IconButton from '../ui/IconButton.svelte';
 	import Splitter from '../ui/Splitter.svelte';
+	import StyleEditor from './StyleEditor.svelte';
 
 	// section-sidebar-panel / section-sidebar-right: a header (the surface's header, if
 	// any, and a collapse button) and a body (the surface's, if any), with a splitter on
-	// the left edge. An empty container unless the active surface fills it.
+	// the left edge. sidebar-panel is an empty container unless the active surface
+	// fills it; sidebar-right always carries the shell's style editor (under the
+	// surface's own body, if any).
 	let { region, width }: { region: SurfaceRegion; width: number } = $props();
 
 	const surface = $derived(active_surface());
@@ -27,7 +30,9 @@
 		class:section-sidebar-panel-header={region === 'sidebar-panel'}
 		class:section-sidebar-right-header={region === 'sidebar-right'}
 	>
-		<div class="row ycenter grow min0">{#if Header}<Header />{/if}</div>
+		<div class="row ycenter grow min0">
+			{#if Header}<Header />{:else if region === 'sidebar-right'}<text class="text-sm weight-600 text-primary truncate">Style</text>{/if}
+		</div>
 		<IconButton icon="x" testId={`${region}-collapse`} onclick={() => toggle(region, surface)} />
 	</div>
 	<div
@@ -35,7 +40,7 @@
 		class:section-sidebar-panel-body={region === 'sidebar-panel'}
 		class:section-sidebar-right-body={region === 'sidebar-right'}
 		testId={`section-${region}-body`}
-	>{#if Body}<Body />{/if}</div>
+	>{#if Body}<Body />{/if}{#if region === 'sidebar-right'}<StyleEditor />{/if}</div>
 	<Splitter
 		edge="left"
 		{width}

@@ -312,6 +312,24 @@ Colours are compared against fractalstyler's value for the same role in the same
 
 Status families: `--success`, `--success-hover`, `--warning`, `--warning-hover`, `--danger`, `--danger-hover`, `--info`, `--info-hover`. Fixed: `--white-fixed` #FFFFFF, `--black-fixed` #171717; accents `--greenpop1–4`, `--orangepop1–6`.
 
+## Live style editor (implemented)
+
+The editor sits in section-sidebar-right on every surface (⌘I); its code is in `src/shell/StyleEditor.svelte` and `src/kernel/style.svelte.ts`. Each step uses one rule: it shifts a whole existing scale by one step, so every token takes the value of its neighbour. No token is added and no new value is invented. The result goes to `set_css_vars`. Sizes and colours keep their `var()`s live in every sheet (fractalstyler's too), so the change repaints instantly.
+
+| Control | Steps | What moves |
+|---|---|---|
+| Text size | small / **regular** / large | `--text-xs`…`--text-5xl` shift down / none / up one step (the ends stay put) |
+| Density | tight / **compact** / spacious | `--space-*` shift one step; control heights shift one rung along `--height-md` 20 → `--height-bs` 24 → `--height-lg` = `--control-h-bs` 32 → `--control-h-lg` 38 |
+| Corners | sharp / **soft** / round | `--radius-xs`…`--radius-lg` shift one step (`--radius-full` is untouched) |
+| Accent | **green** / orange / theme | the app's greenpop, fractalstyler's orangepop 1/5/6, or fractalstyler's per-mode `--theme-color` / `--theme-color-alt` |
+| Colours: surfaces, text, borders, hover, selected | **App** / fractalstyler | the app palette (`_own.sass`) or fractalstyler's own value for the same role tokens |
+
+The defaults (in bold) are today's look. Choices persist in the `style` settings slot. Reset and "Copy as Sass" (the changed tokens as `$name: value`) sit at the bottom of the editor.
+
+One limit: line-heights that fractalstyler bakes into px at build time (e.g. `.text-body`) do not follow a text-size change.
+
+The proposal below was the starting point. The implemented shift differs in one place: at "small", body text uses `--text-xs` as well.
+
 ## Proposed named steps for the live editor (existing tokens only)
 
 Each named step chooses which existing token a UI role reads. No token is added, and no token value changes. "Today" shows where the app sits now, snapped to the nearest token.
