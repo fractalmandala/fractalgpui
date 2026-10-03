@@ -7,13 +7,73 @@
 // App tokens. Flattened with fractalstyler's (build/tokens.ts) and inlined into
 // rules when they are the same in both modes.
 :root
+	// Fonts: GPUI loads no font files; it uses fonts installed on the Mac by family
+	// name. The installed variable TTFs register as "General Sans Variable".
+	--font-sans: General Sans Variable
 	--font-mono: Menlo
+	// Accent: Amrit's greenpop scale, the same in both modes.
+	--greenpop1: #00e676
+	--greenpop2: #00df89
+	--greenpop3: #69ff97
+	--greenpop4: #70e000
+	--accent: var(--greenpop1)
+	--accent-hover: var(--greenpop2)
+	--accent-soft: var(--greenpop3)
+	// Text on a green surface: black reads at ~13:1 on #00e676; white fails (1.6:1).
+	--on-accent: #000000
 	--wb-rail-width: 208px
 	--wb-glyph: 24px
 	--wb-scrim: rgba(0, 0, 0, 0.45)
 	--wb-palette-width: 560px
 	--wb-palette-top: 96px
 	--wb-palette-list: 320px
+
+// Neutral surfaces: pure white / near-white and black / near-black. These override
+// fractalstyler's semantic tokens (its light greys are warm), so its classes
+// (`bg`, `panel`, `raised`, `border`…) take the clean palette without a fork.
+[data-mode='light']
+	// fractalstyler sets its accent per mode, so the override must be per mode too.
+	--theme-color: var(--greenpop1)
+	--theme-color-alt: var(--greenpop2)
+	--bg: #FFFFFF
+	--bg-surface: #FAFAFA
+	--bg-panel: #FAFAFA
+	--bg-raised: #FFFFFF
+	--bg-sunken: #F5F5F5
+	--bg-input: #FFFFFF
+	--bg-extra: #F5F5F5
+	--bg-button: #F5F5F5
+	--border: #EBEBEB
+	--border-subtle: #F2F2F2
+	--border-strong: #DCDCDE
+	--state-hover: #F4F4F5
+	--state-selected: #EDEDEF
+	--text-primary: #111113
+	--text-secondary: #6B6B70
+	--text-muted: #A1A1A6
+	--ring: rgba(0, 230, 118, 0.45)
+
+[data-mode='dark']
+	// fractalstyler sets its accent per mode, so the override must be per mode too.
+	--theme-color: var(--greenpop1)
+	--theme-color-alt: var(--greenpop2)
+	--bg: #000000
+	--bg-surface: #0A0A0A
+	--bg-panel: #0A0A0A
+	--bg-raised: #111111
+	--bg-sunken: #0D0D0D
+	--bg-input: #0D0D0D
+	--bg-extra: #0A0A0A
+	--bg-button: #111111
+	--border: #1F1F1F
+	--border-subtle: #161616
+	--border-strong: #2C2C2E
+	--state-hover: #151517
+	--state-selected: #1C1C1F
+	--text-primary: #EDEDED
+	--text-secondary: #A1A1A1
+	--text-muted: #6B6B6B
+	--ring: rgba(0, 230, 118, 0.45)
 
 // --- Shell: tool rail ---------------------------------------------------------
 .wb-rail // Fixed-width tool rail on the left
@@ -49,10 +109,10 @@
 	&.active
 		background-color: var(--state-selected)
 	&.primary
-		background-color: var(--theme-color)
-		color: var(--white-fixed)
+		background-color: var(--accent)
+		color: var(--on-accent)
 		&:hover
-			background-color: var(--theme-color-alt)
+			background-color: var(--accent-hover)
 	&.ghost
 		background-color: transparent
 		&:hover

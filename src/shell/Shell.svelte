@@ -25,7 +25,7 @@
 	);
 </script>
 
-<div class="row full bg text-primary">
+<div class="row full sans bg text-primary">
 	<ToolRail />
 	<div class="box grow min0 hfull">
 		<div class="box grow min0" testId={`tool-${tool.id}`}>
