@@ -2,6 +2,7 @@
 	import { design } from '../../kernel/design.svelte.ts';
 	import { switch_to } from '../../kernel/settings.svelte.ts';
 	import { TOOLS } from '../index.ts';
+	import Icon from '../../ui/Icon.svelte';
 	import Kbd from '../../ui/Kbd.svelte';
 
 	const tools = TOOLS.filter((t) => t.id !== 'home');
@@ -34,7 +35,7 @@
 			{#each tools as tool (tool.id)}
 				<div class="wb-card clickable box gap-xs" hitbox="self" testId={`home-open-${tool.id}`} onclick={() => switch_to(tool.id)}>
 					<div class="row ycenter gap-sm">
-						<div class="wb-glyph row xcenter ycenter radius-xs text-xs weight-600"><text>{tool.glyph}</text></div>
+						<div class="wb-glyph row xcenter ycenter radius-md"><Icon name={tool.icon} tone="primary" /></div>
 						<text class="text-md weight-600">{tool.title}</text>
 					</div>
 					<text class="text-sm text-secondary">{tool.description}</text>

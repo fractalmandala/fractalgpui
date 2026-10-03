@@ -9,14 +9,14 @@ import { flush, settings_file } from '../src/kernel/storage.svelte.ts';
 import { css_tool } from '../src/tools/css-to-sass/state.svelte.ts';
 
 load_styles();
-mount_headless(App, { width: 1000, height: 538 });
+mount_headless(App, { width: 1400, height: 538 });
 
 check('starts on home', !!find_test_id('tool-home'));
-check('rail lists the converter', !!find_test_id('rail-css-to-sass'));
+check('nav lists the converter', !!find_test_id('nav-css-to-sass'));
 check('status bar shows the tool', all_text().includes('Fractal workbench'));
 
 // rail switching
-click_test_id('rail-css-to-sass');
+click_test_id('nav-css-to-sass');
 check('rail switches tools', !!find_test_id('tool-css-to-sass') && !find_test_id('tool-home'));
 check('active tool persisted to settings', settings.activeTool, 'css-to-sass');
 

@@ -5,8 +5,8 @@ import { render_hot } from './build/hot.ts';
 // src/ or in fractalstyler's styles remount the app.
 await render_hot(new URL('./src/App.svelte', import.meta.url), {
 	title: 'fractalgpui',
-	width: 1100,
-	height: 720,
+	width: 1440,
+	height: 860,
 	minWidth: 720,
 	minHeight: 480
 });

@@ -21,8 +21,6 @@
 	--accent-soft: var(--greenpop3)
 	// Text on a green surface: black reads at ~13:1 on #00e676; white fails (1.6:1).
 	--on-accent: #000000
-	--wb-rail-width: 208px
-	--wb-glyph: 24px
 	--wb-scrim: rgba(0, 0, 0, 0.45)
 	--wb-palette-width: 560px
 	--wb-palette-top: 96px
@@ -276,27 +274,53 @@
 	&.dragging
 		background-color: var(--accent)
 
-// --- Shell: tool rail ---------------------------------------------------------
-.wb-rail // Fixed-width tool rail on the left
-	width: var(--wb-rail-width)
+// --- Shell -----------------------------------------------------------------------------
+.wb-rail // Collapsed left sidebar: icons only (kernel/layout RAIL)
+	width: 52px
 	flex-shrink: 0
 
-.wb-rail-item // A tool entry in the rail
+.wb-brand // The app mark
+	width: 24px
+	height: 24px
+	flex-shrink: 0
+	border-radius: 6px
+	background-color: var(--accent)
+	color: var(--on-accent)
+	font-size: 13px
+	font-weight: 700
+
+.wb-nav-item // A surface in the left nav
+	height: 32px
+	padding: 0 8px
+	border-radius: 8px
 	color: var(--text-secondary)
+	font-size: 13px
+	font-weight: 500
 	cursor: pointer
 	user-select: none
 	&:hover
 		background-color: var(--state-hover)
+		color: var(--text-primary)
 	&.active
 		background-color: var(--state-selected)
 		color: var(--text-primary)
 
-.wb-glyph // Square glyph tile (tools have no icon font yet)
-	width: var(--wb-glyph)
-	height: var(--wb-glyph)
+.wb-glyph // Square icon tile (empty states, cards)
+	width: 32px
+	height: 32px
 	flex-shrink: 0
-	background-color: var(--bg-raised)
-	color: var(--text-primary)
+	border-width: 1px
+	border-color: var(--border)
+	background-color: var(--bg-sunken)
+
+.wb-titlebar // Main area header
+	height: 44px
+	flex-shrink: 0
+
+.wb-statusbar
+	height: 24px
+	flex-shrink: 0
+	background-color: var(--bg-surface)
 
 // --- Command palette --------------------------------------------------------------
 .wb-scrim // Full-window dimmer behind the palette
@@ -324,3 +348,6 @@
 	width: 100%
 	background-color: var(--bg-input)
 	color: var(--text-primary)
+
+.wb-composer // The agent message box
+	background-color: var(--bg-raised)

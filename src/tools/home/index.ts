@@ -4,7 +4,8 @@ import Home from './Home.svelte';
 export default {
 	id: 'home',
 	title: 'Home',
-	glyph: '⌂',
+	icon: 'house',
 	description: 'What is here, what is next, and how the styling adapter is doing.',
-	component: Home
+	component: Home,
+	agent: false
 } satisfies ToolManifest;

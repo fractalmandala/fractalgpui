@@ -59,10 +59,5 @@ export function copy_output() {
 	else flash('Could not reach the clipboard (pbcopy)', 'danger');
 }
 
-const COMMENTS: Comments[] = ['silent', 'loud', 'drop'];
-const INDENTS: Indent[] = ['tab', '2', '4'];
-
-export const cycle_comments = () => (css_tool.comments = COMMENTS[(COMMENTS.indexOf(css_tool.comments) + 1) % COMMENTS.length]);
-export const cycle_indent = () => (css_tool.indent = INDENTS[(INDENTS.indexOf(css_tool.indent) + 1) % INDENTS.length]);
 export const load_sample = () => (css_tool.css = SAMPLE);
 export const clear = () => (css_tool.css = '');

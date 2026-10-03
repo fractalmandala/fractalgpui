@@ -11,7 +11,7 @@ load_styles();
 css_tool.css = '.a { color: red }\n.a .b { margin: 0 }';
 css_tool.nest = true;
 switch_to('css-to-sass');
-mount_headless(App, { width: 1000, height: 538 });
+mount_headless(App, { width: 1400, height: 538 });
 
 check('page mounts', !!find_test_id('css-input') && !!find_test_id('sass-output'));
 check('output is nested Sass', painted().includes('.a') && painted().includes('color: red') && painted().includes('.b'));
@@ -25,12 +25,12 @@ click_test_id('copy');
 check('copy puts the Sass on the clipboard', last_copied(), '.a\n\tcolor: red\n\t.b\n\t\tmargin: 0\n');
 check('copy flashes the status bar', status.message.startsWith('Copied 4 lines') && !!find_test_id('status-message'));
 
-click_test_id('opt-indent');
+click_test_id('opt-indent-2');
 click_test_id('copy');
 check('indent option applies', last_copied(), '.a\n  color: red\n  .b\n    margin: 0\n');
 
 css_tool.css = '.broken { color: red';
-click_test_id('rail-css-to-sass'); // any event settles the change
+click_test_id('nav-css-to-sass'); // any event settles the change
 check('parse errors are shown', !!find_test_id('sass-error') && !find_test_id('sass-output'));
 
 click_test_id('clear');

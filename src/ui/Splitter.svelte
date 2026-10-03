@@ -26,8 +26,20 @@
 
 	type Pointer = { x?: number; pressedButton?: number; clickCount?: number };
 
+	// GPUI's clickCount on mousedown is not reliable here (headless reports 1), so a
+	// double press is timed locally: two presses within 400ms without a drag between.
+	let last_down = 0;
+	let moved = false;
+
 	function down(e: Pointer) {
-		if (e.clickCount === 2 && onreset) return onreset();
+		const now = Date.now();
+		const double = (e.clickCount ?? 1) >= 2 || (now - last_down < 400 && !moved);
+		last_down = now;
+		moved = false;
+		if (double && onreset) {
+			last_down = 0;
+			return onreset();
+		}
 		dragging = true;
 		start_x = e.x ?? 0;
 		start_w = width;
@@ -37,6 +49,7 @@
 		if (!dragging) return;
 		if (e.pressedButton !== 0) return end(); // released outside the window
 		const dx = (e.x ?? start_x) - start_x;
+		if (dx !== 0) moved = true;
 		onresize(edge === 'right' ? start_w + dx : start_w - dx);
 	}
 
