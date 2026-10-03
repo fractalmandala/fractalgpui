@@ -22,6 +22,6 @@ check('accent is greenpop1 in both modes', [light['theme-color'], dark['theme-co
 check('black text on the accent', dark['on-accent'], '#000000');
 check('sans font is the installed variable family', dark['font-sans'], 'General Sans Variable');
 check('app token --font-mono present', dark['font-mono'], 'Menlo');
-check('own classes all translated', ['wb-btn', 'wb-rail', 'wb-palette', 'wb-scrim'].every((c) => build.defined.has(c)));
+check('own classes all translated', ['wb-btn', 'section-sidebar-left', 'section-main-header', 'section-main-footer', 'wb-palette', 'wb-scrim'].every((c) => build.defined.has(c)));
 
 finish('styles', 13);

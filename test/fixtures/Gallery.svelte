@@ -22,7 +22,7 @@
 </script>
 
 <div class="row full bg text-primary sans">
-	<div class="wb-sidebar box hfull panel br" style={`width: ${width}px`} testId="panel">
+	<div class="section-sidebar-panel box hfull panel br" style={`width: ${width}px`} testId="panel">
 		<PanelHeader title="Panel">
 			{#snippet actions()}<IconButton icon="x" testId="close" onclick={() => log('close')} />{/snippet}
 		</PanelHeader>

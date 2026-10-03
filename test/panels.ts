@@ -5,6 +5,7 @@ import { bounds, check, click_test_id, drain, find_test_id, finish, mount_headle
 import { load_styles } from '../build/styles.ts';
 import App from '../src/App.svelte';
 import { is_collapsed, LIMITS, width_of } from '../src/kernel/layout.svelte.ts';
+import { active_surface } from '../src/kernel/surfaces.svelte.ts';
 import { switch_to } from '../src/kernel/settings.svelte.ts';
 
 type Mouse = {
@@ -49,58 +50,71 @@ function drag(id: string, dx: number) {
 	step(() => native.simulateMouseUp(x + dx, y, 0));
 }
 
-check('all three panels open on a wide window', [has('left-sidebar'), has('rightA-panel'), has('rightB-panel')], [true, true, true]);
-check('panels start at their default widths', [near(width('left-sidebar'), 240), near(width('rightA-panel'), 340), near(width('rightB-panel'), 300)], [true, true, true]);
-check('right containers are empty unless the surface fills them', [has('rightA-body'), has('rightB-body'), has('opt-nest')], [true, true, true]);
-check('right containers carry no placeholder text', !/agent|inspector|options|not connected/i.test([...all_text_in('rightA-panel'), ...all_text_in('rightB-panel')].join(' ')));
+const L = 'sidebar-left', P = 'sidebar-panel', R = 'sidebar-right';
+const css = () => active_surface();
+
+// sections and defaults
+check('all four sections exist', [has('section-sidebar-left'), has('section-main'), has('section-main-header'), has('section-main-body'), has('section-main-footer')], [true, true, true, true, true]);
+check('sidebar-panel and sidebar-right start collapsed', [has('section-sidebar-panel'), has('section-sidebar-right')], [false, false]);
+click_test_id('toggle-sidebar-panel');
+click_test_id('toggle-sidebar-right');
+check('the header toggles open them', [has('section-sidebar-panel'), has('section-sidebar-right')], [true, true]);
+check('sidebars start at their default widths', [near(width('section-sidebar-left'), 240), near(width('section-sidebar-panel'), 340), near(width('section-sidebar-right'), 300)], [true, true, true]);
+check('sidebars are empty containers unless the surface fills them', [has('section-sidebar-panel-body'), has('section-sidebar-right-body'), all_text_in('section-sidebar-panel').length, all_text_in('section-sidebar-right').length], [true, true, 0, 0]);
+check('main is not collapsible', !has('section-main-collapse') && !has('toggle-section-main'));
 
 // collapse
 press('cmd-b');
-check('⌘B collapses the left sidebar to the icon rail', [has('left-sidebar'), has('left-rail'), near(width('left-rail'), 52)], [false, true, true]);
-click_test_id('left-expand');
-check('the rail expands it again', has('left-sidebar') && !has('left-rail'));
-click_test_id('left-collapse');
-check('the header button collapses it', has('left-rail'));
+check('⌘B collapses the left sidebar to the icon rail', [has('section-sidebar-left'), has('section-sidebar-left-rail'), near(width('section-sidebar-left-rail'), 52)], [false, true, true]);
+click_test_id('sidebar-left-expand');
+check('the rail expands it again', has('section-sidebar-left') && !has('section-sidebar-left-rail'));
+click_test_id('sidebar-left-collapse');
+check('the header button collapses it', has('section-sidebar-left-rail'));
 press('cmd-b');
 
 press('cmd-j');
-check('⌘J closes right panel A', !has('rightA-panel') && is_collapsed('rightA'));
-click_test_id('toggle-rightA');
-check('the title-bar button reopens it', has('rightA-panel'));
-click_test_id('rightA-close');
-check('its close button closes it', !has('rightA-panel'));
+check('⌘J collapses sidebar-panel', !has('section-sidebar-panel') && is_collapsed(P, css()));
+click_test_id('toggle-sidebar-panel');
+check('the header toggle reopens it', has('section-sidebar-panel'));
+click_test_id('sidebar-panel-collapse');
+check('its own button collapses it', !has('section-sidebar-panel'));
 press('cmd-j');
 
 press('cmd-i');
-check('⌘I closes right panel B', !has('rightB-panel'));
+check('⌘I collapses sidebar-right', !has('section-sidebar-right'));
 press('cmd-i');
 press('cmd-\\');
-check('⌘\\ closes every panel', [has('left-sidebar'), has('left-rail'), has('rightA-panel'), has('rightB-panel')], [false, true, false, false]);
+check('⌘\\ collapses every sidebar', [has('section-sidebar-left'), has('section-sidebar-left-rail'), has('section-sidebar-panel'), has('section-sidebar-right'), has('section-main')], [false, true, false, false, true]);
 press('cmd-\\');
-check('⌘\\ again opens them all', [has('left-sidebar'), has('rightA-panel'), has('rightB-panel')], [true, true, true]);
+check('⌘\\ again opens them all', [has('section-sidebar-left'), has('section-sidebar-panel'), has('section-sidebar-right')], [true, true, true]);
 
 // resize
-drag('left-splitter', 60);
-check('dragging the left splitter widens the sidebar', [width_of('left', 'css-to-sass'), near(width('left-sidebar'), 300)], [300, true]);
-drag('rightA-splitter', -80);
-check('dragging a right splitter leftwards widens that panel', [width_of('rightA', 'css-to-sass'), near(width('rightA-panel'), 420)], [420, true]);
-drag('left-splitter', 500);
-check('widths clamp to the maximum', width_of('left', 'css-to-sass'), LIMITS.left.max);
+drag('sidebar-left-splitter', 60);
+check('dragging the left splitter widens the sidebar', [width_of(L, css()), near(width('section-sidebar-left'), 300)], [300, true]);
+drag('sidebar-panel-splitter', -80);
+check('dragging a right splitter leftwards widens that sidebar', [width_of(P, css()), near(width('section-sidebar-panel'), 420)], [420, true]);
+drag('sidebar-left-splitter', 500);
+check('widths clamp to the maximum', width_of(L, css()), LIMITS[L].max);
 
 // per surface
 press('cmd-1');
-check('another surface keeps its own (default) width', near(width('left-sidebar'), 240));
-check('home gets the same two containers and toggles', [has('rightA-panel'), has('rightB-panel'), has('toggle-rightA'), has('toggle-rightB')], [true, true, true, true]);
+check('another surface keeps its own (default) width', near(width('section-sidebar-left'), 240));
+check('another surface keeps its own open state (collapsed default)', [has('section-sidebar-panel'), has('section-sidebar-right')], [false, false]);
+click_test_id('toggle-sidebar-right');
+check('home toggles are its own', [has('section-sidebar-right'), has('section-sidebar-panel')], [true, false]);
 press('cmd-2');
-check('switching back restores the resized width', near(width('left-sidebar'), LIMITS.left.max));
-
+// (sidebar-right is open but fitted out: 360 + 420 + 300 leaves main under MAIN_MIN at 1400px)
+check('switching back restores that surface\'s width and open state', [near(width('section-sidebar-left'), LIMITS[L].max), has('section-sidebar-panel'), is_collapsed(R, css()), has('section-sidebar-right')], [true, true, false, false]);
+press('cmd-1');
+check('and home\'s', [has('section-sidebar-panel'), has('section-sidebar-right')], [false, true]);
+press('cmd-2');
 
 // double-click a splitter: forget the resize
-const b = bounds(find_test_id('left-splitter')!)!;
+const b = bounds(find_test_id('sidebar-left-splitter')!)!;
 for (let i = 0; i < 2; i++) {
 	step(() => native.simulateMouseDown(b[0] + 2, b[1] + 120, 0));
 	step(() => native.simulateMouseUp(b[0] + 2, b[1] + 120, 0));
 }
-check('double-clicking a splitter resets that width', width_of('left', 'css-to-sass'), LIMITS.left.default);
+check('double-clicking a splitter resets that width', width_of(L, css()), LIMITS[L].default);
 
-finish('panels', 20);
+finish('panels', 24);

@@ -6,22 +6,22 @@
 	import { watch_window, win } from '../kernel/window.svelte.ts';
 	import Tabs from '../ui/Tabs.svelte';
 	import CommandPalette from './CommandPalette.svelte';
-	import LeftSidebar from './LeftSidebar.svelte';
-	import RightPanel from './RightPanel.svelte';
-	import StatusBar from './StatusBar.svelte';
-	import TitleBar from './TitleBar.svelte';
+	import MainFooter from './MainFooter.svelte';
+	import MainHeader from './MainHeader.svelte';
+	import Sidebar from './Sidebar.svelte';
+	import SidebarLeft from './SidebarLeft.svelte';
 
 	install();
 
-	// Regions: left sidebar (or rail) | title bar, tabs, surface, status bar | right A | right B.
-	// The right containers are always available; the surface may fill them.
+	// Sections (assets/wireframe-v1.png):
+	// section-sidebar-left | section-main (header, body, footer) | section-sidebar-panel | section-sidebar-right
 	const tool = $derived(active_surface());
 	const widths = $derived({
-		left: width_of('left', tool.id, tool.layout),
-		rightA: width_of('rightA', tool.id, tool.layout),
-		rightB: width_of('rightB', tool.id, tool.layout)
+		'sidebar-left': width_of('sidebar-left', tool),
+		'sidebar-panel': width_of('sidebar-panel', tool),
+		'sidebar-right': width_of('sidebar-right', tool)
 	});
-	const shown = $derived(fit(win.width, { left: true, rightA: true, rightB: true }, widths));
+	const shown = $derived(fit(win.width, tool, widths));
 
 	$effect(() => watch_window());
 	$effect(() => ensure_loaded(tool));
@@ -42,21 +42,23 @@
 </script>
 
 <div class="row full sans bg text-primary">
-	{#if shown.left !== 'none'}<LeftSidebar mode={shown.left} width={widths.left} />{/if}
+	<SidebarLeft mode={shown['sidebar-left']} width={widths['sidebar-left']} />
 
-	<div class="box grow min0 hfull" testId="main">
-		<TitleBar rightA={shown.rightA} rightB={shown.rightB} />
-		{#if tool.tabs}
-			<Tabs tabs={tool.tabs.list()} value={tool.tabs.value()} onchange={tool.tabs.select} testId="surface-tabs" />
-		{/if}
-		<div class="box grow min0" testId={`tool-${tool.id}`}>
-			<tool.component />
+	<div class="section-main box grow min0 hfull" testId="section-main">
+		<MainHeader panel={shown['sidebar-panel']} right={shown['sidebar-right']} />
+		<div class="section-main-body box grow min0" testId="section-main-body">
+			{#if tool.tabs}
+				<Tabs tabs={tool.tabs.list()} value={tool.tabs.value()} onchange={tool.tabs.select} testId="surface-tabs" />
+			{/if}
+			<div class="box grow min0" testId={`tool-${tool.id}`}>
+				<tool.component />
+			</div>
 		</div>
-		<StatusBar />
+		<MainFooter />
 	</div>
 
-	{#if shown.rightA}<RightPanel region="rightA" slot={tool.panels?.rightA} width={widths.rightA} />{/if}
-	{#if shown.rightB}<RightPanel region="rightB" slot={tool.panels?.rightB} width={widths.rightB} />{/if}
+	{#if shown['sidebar-panel']}<Sidebar region="sidebar-panel" width={widths['sidebar-panel']} />{/if}
+	{#if shown['sidebar-right']}<Sidebar region="sidebar-right" width={widths['sidebar-right']} />{/if}
 
 	{#if palette.open}<CommandPalette />{/if}
 </div>

@@ -1,8 +1,7 @@
 import type { AnyComponent } from 'gpuix-svelte';
 import type { IconName } from '../ui/icons.ts';
 import type { Tab } from '../ui/types.ts';
-import type { RightRegion } from './layout.svelte.ts';
-import type { Widths } from './layout.svelte.ts';
+import type { Collapsed, Widths } from './layout.svelte.ts';
 
 /** Something the user can do: from the palette, a keybinding, or a button. */
 export interface Command {
@@ -31,13 +30,18 @@ export interface Surface {
 	description: string;
 	/** The centre content. */
 	component: AnyComponent;
-	/** Context under the nav in the left sidebar. */
-	left?: AnyComponent;
 	/**
-	 * Content for the two right-hand containers. Both containers exist on every
-	 * surface (empty unless filled); a surface may fill a header row and/or a body.
+	 * What the surface puts in the shell's sections (all optional; an unfilled section
+	 * stays an empty container). `sidebar-left` takes a body only: it goes under the
+	 * surface nav, between the shell's own header and footer.
 	 */
-	panels?: Partial<Record<RightRegion, PanelSlot>>;
+	sections?: {
+		'sidebar-left'?: Pick<SectionSlot, 'body'>;
+		'sidebar-panel'?: SectionSlot;
+		'sidebar-right'?: SectionSlot;
+	};
+	/** Whether sidebar-panel / sidebar-right start collapsed on this surface (default: collapsed). */
+	collapsed?: Collapsed;
 	/** Actions in the title bar, right of the title. */
 	toolbar?: AnyComponent;
 	/** A tab row above the content; the surface keeps the value in its state. */
@@ -52,8 +56,8 @@ export interface Surface {
 	load?: () => void | Promise<void>;
 }
 
-/** What a surface may put in a right-hand container. */
-export interface PanelSlot {
+/** What a surface may put in a sidebar section: its header row and/or its body. */
+export interface SectionSlot {
 	header?: AnyComponent;
 	body?: AnyComponent;
 }

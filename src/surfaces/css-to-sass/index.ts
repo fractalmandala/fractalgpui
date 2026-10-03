@@ -17,7 +17,7 @@ export default {
 	description: 'Convert CSS to indented Sass, nesting where it is safe.',
 	component: CssToSass,
 	toolbar: Toolbar,
-	left: Left,
+	sections: { 'sidebar-left': { body: Left } },
 	tabs: {
 		list: () => [
 			{ id: 'convert', label: 'Convert' },

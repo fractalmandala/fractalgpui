@@ -254,11 +254,6 @@
 	flex-shrink: 0
 
 // --- Panels ----------------------------------------------------------------------------
-.wb-sidebar // A resizable side panel; its width is the one inline style (a live number)
-	position: relative
-	flex-shrink: 0
-	overflow: hidden
-
 .wb-panel-header
 	height: 44px
 	flex-shrink: 0
@@ -278,10 +273,36 @@
 	&.dragging
 		background-color: var(--accent)
 
-// --- Shell -----------------------------------------------------------------------------
-.wb-rail // Collapsed left sidebar: icons only (kernel/layout RAIL)
-	width: 52px
+// --- Shell sections (assets/wireframe-v1.png) ---------------------------------------
+// section-sidebar-left | section-main | section-sidebar-panel | section-sidebar-right.
+// A sidebar's width is its one inline style (a live number from kernel/layout).
+.section-sidebar-left, .section-sidebar-panel, .section-sidebar-right
+	position: relative
 	flex-shrink: 0
+	overflow: hidden
+
+.section-sidebar-left.rail // Collapsed: icons only (kernel/layout RAIL)
+	width: 52px
+
+.section-sidebar-left-header, .section-sidebar-panel-header, .section-sidebar-right-header, .section-main-header
+	height: 44px
+	flex-shrink: 0
+
+.section-sidebar-left-footer
+	flex-shrink: 0
+
+.section-main // Never collapsible: takes what the sidebars leave
+	flex-grow: 1
+	min-width: 0
+
+.section-main-body, .section-sidebar-left-body, .section-sidebar-panel-body, .section-sidebar-right-body
+	flex-grow: 1
+	min-height: 0
+
+.section-main-footer // The status bar
+	height: 24px
+	flex-shrink: 0
+	background-color: var(--bg-surface)
 
 .wb-brand // The app mark
 	width: 24px
@@ -317,18 +338,9 @@
 	border-color: var(--border)
 	background-color: var(--bg-sunken)
 
-.wb-titlebar // Main area header
-	height: 44px
-	flex-shrink: 0
-
 .wb-status-link
 	cursor: pointer
 	user-select: none
-
-.wb-statusbar
-	height: 24px
-	flex-shrink: 0
-	background-color: var(--bg-surface)
 
 // --- Command palette --------------------------------------------------------------
 .wb-scrim // Full-window dimmer behind the palette

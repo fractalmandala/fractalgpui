@@ -22,17 +22,27 @@ Needs Bun ≥ 1.4 on `PATH` (tested with `~/.bun/bin/bun` 1.4.2) because the scr
 | ⌘K | Command palette (type to filter, ↑/↓, ⏎, esc) |
 | ⌘1 … ⌘9 | Switch to surface N |
 | ⌘B | Left sidebar ↔ icon rail |
-| ⌘J / ⌘I | Right container A / B |
-| ⌘\\ | Close / reopen every panel |
+| ⌘J / ⌘I | sidebar-panel / sidebar-right |
+| ⌘\\ | Collapse / reopen every sidebar |
 | ⌃⇥ / ⌃⇧⇥ | Next / previous tab |
 | ⇧⌘L | Toggle light / dark |
 | ⇧⌘C | CSS → Sass: copy the output |
 
-Window: left sidebar (surface nav + the surface's own context; collapses to a 52px
-rail) | title bar, tabs, surface, status bar | right container A | right container B.
-The right containers are generic and empty unless the surface fills them. Every panel
-is resizable by its splitter (double-click resets), widths are kept per surface, and
-panels that don't fit the window drop out (B first) without changing your choice.
+Window, as in `assets/wireframe-v1.png`:
+
+| Section | Parts | Collapsible |
+|---|---|---|
+| `section-sidebar-left` | header (brand), body (surface nav + the surface's context), footer (app actions) | yes, to a 52px icon rail; open by default; app-wide, persists |
+| `section-main` | header (title, toolbar, sidebar toggles), body (tabs + surface), footer (status bar) | never |
+| `section-sidebar-panel` | header, body | yes; collapsed by default; per surface, persists |
+| `section-sidebar-right` | header, body | yes; collapsed by default; per surface, persists |
+
+A surface may declare its own defaults for sidebar-panel / sidebar-right
+(`Surface.collapsed`); once you toggle one on a surface, that choice is kept for that
+surface, so switching surfaces restores each one's own state. Unfilled sections are
+empty containers. Sidebars resize by their splitter (double-click resets), widths are
+kept per surface, and sidebars that don't fit the window drop out (sidebar-right
+first) without changing your choice.
 
 Surfaces: **Home** (a card per surface) and **CSS → Sass** (paste CSS left, indented
 Sass right, an options row for nesting, `@media` folding, comments and indent; samples
@@ -48,7 +58,7 @@ warnings show in the status bar (click for detail, or "Show style diagnostics").
 | `build/` | The fractalstyler → GPUI adapter (build time / load time, no UI). |
 | `src/App.svelte` | Applies the theme (`set_css_vars`) and mounts the shell. |
 | `src/kernel/` | Surface registry, commands + keymap + palette state, panel layout (`layout.svelte.ts`), window size, typed bus, settings persistence, theme tokens, status, clipboard. |
-| `src/shell/` | `Shell` (regions, key handling), `LeftSidebar`, `TitleBar`, `RightPanel` (a generic container), `StatusBar`, `CommandPalette`. |
+| `src/shell/` | `Shell` (sections, key handling), `SidebarLeft`, `MainHeader`, `MainFooter` (status bar), `Sidebar` (sidebar-panel / sidebar-right), `CommandPalette`. |
 | `src/ui/` | Primitives: `Icon` (Lucide SVGs in `assets/icons`), `IconButton`, `Button`, `Tabs`, `Segmented`, `Toggle`, `Pill`, `Card`, `SectionLabel`, `PanelHeader`, `Splitter`, `Kbd`. |
 | `src/surfaces/<id>/` | One folder per surface: `index.ts` manifest, `state.svelte.ts`, components, `test.ts` (headless), `lib/` (UI-free logic + `*.test.ts`). |
 | `src/surfaces/index.ts` | Nav order. Adding a surface = a folder + one line here. |
@@ -93,9 +103,10 @@ Rules of the road (fractalstyler's closed world):
 ## Kernel notes
 
 - **Surfaces** are `Surface`s (`src/kernel/types.ts`): id, title, icon, description,
-  component, and optional slots: `left` (sidebar context), `toolbar` (title bar),
-  `tabs`, `panels.rightA` / `panels.rightB` (`{ header?, body? }` for the right
-  containers), `layout` (default widths), `badge`, `commands`, `load()` (runs once on
+  component, and optional slots: `sections['sidebar-left'].body` (context under
+  the nav), `sections['sidebar-panel']` / `sections['sidebar-right']` (`{ header?,
+  body? }`), `collapsed` (their default open state), `toolbar` (main header), `tabs`,
+  `layout` (default widths), `badge`, `commands`, `load()` (runs once on
   first show). Commands are registered at start-up and grouped under the title.
 - **Bus** (`kernel/bus.ts`, events typed in `kernel/events.ts`): surfaces talk through
   it, never by importing each other. `surface:switch` is sent on every switch.

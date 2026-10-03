@@ -8,7 +8,8 @@
 	const styles = $derived(design.report ? `${design.report.registered} rules · fractalstyler ${design.report.mode}` : 'no styles');
 </script>
 
-<div class="wb-statusbar row ycenter xbetween gap-md px-md bt text-xs text-muted" testId="status-bar">
+<!-- section-main-footer: the status bar. -->
+<div class="section-main-footer row ycenter xbetween gap-md px-md bt text-xs text-muted" testId="section-main-footer">
 	<div class="row ycenter gap-md min0">
 		<text class="text-secondary">{tool.title}</text>
 		{#if status.message}
