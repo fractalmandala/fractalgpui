@@ -1,4 +1,4 @@
-import type { ToolManifest } from '../../kernel/types.ts';
+import type { Surface } from '../../kernel/types.ts';
 import Home from './Home.svelte';
 
 export default {
@@ -8,4 +8,4 @@ export default {
 	description: 'What is here, what is next, and how the styling adapter is doing.',
 	component: Home,
 	agent: false
-} satisfies ToolManifest;
+} satisfies Surface;

@@ -4,7 +4,7 @@ import { persisted } from './storage.svelte.ts';
 /** App-wide preferences. Tools keep their own slots via `persisted()`. */
 export const settings = persisted('app', {
 	theme: 'dark' as Mode,
-	activeTool: 'home'
+	activeSurface: 'home'
 });
 
 export function toggle_theme() {
@@ -13,5 +13,5 @@ export function toggle_theme() {
 
 /** Shows a tool; the shell falls back to the first tool for an unknown id. */
 export function switch_to(id: string) {
-	settings.activeTool = id;
+	settings.activeSurface = id;
 }

@@ -6,7 +6,7 @@ import App from '../src/App.svelte';
 import { palette } from '../src/kernel/commands.svelte.ts';
 import { settings } from '../src/kernel/settings.svelte.ts';
 import { flush, settings_file } from '../src/kernel/storage.svelte.ts';
-import { css_tool } from '../src/tools/css-to-sass/state.svelte.ts';
+import { css_tool } from '../src/surfaces/css-to-sass/state.svelte.ts';
 
 load_styles();
 mount_headless(App, { width: 1400, height: 538 });
@@ -15,10 +15,18 @@ check('starts on home', !!find_test_id('tool-home'));
 check('nav lists the converter', !!find_test_id('nav-css-to-sass'));
 check('status bar shows the tool', all_text().includes('Fractal workbench'));
 
+// home grid
+check('home lists surfaces as cards', !!find_test_id('home-open-css-to-sass'));
+check('home lists planned surfaces as muted cards', all_text().includes('Token inspector') && !!find_test_id('planned-card'));
+check('home carries no style diagnostics', !all_text().includes('declarations dropped') && !all_text().includes('Styles'));
+click_test_id('home-open-css-to-sass');
+check('a home card opens its surface', settings.activeSurface, 'css-to-sass');
+press('cmd-1');
+
 // rail switching
 click_test_id('nav-css-to-sass');
 check('rail switches tools', !!find_test_id('tool-css-to-sass') && !find_test_id('tool-home'));
-check('active tool persisted to settings', settings.activeTool, 'css-to-sass');
+check('active tool persisted to settings', settings.activeSurface, 'css-to-sass');
 
 // keymap
 press('cmd-1');
@@ -63,7 +71,7 @@ check('rail toggle toggles the theme', settings.theme, 'light');
 // persistence
 flush();
 const saved = JSON.parse(readFileSync(settings_file(), 'utf8'));
-check('settings.json has version and slots', saved.version === 1 && saved.slots.app.theme === 'light' && saved.slots.app.activeTool === 'home');
+check('settings.json has version and slots', saved.version === 1 && saved.slots.app.theme === 'light' && saved.slots.app.activeSurface === 'home');
 check('tool state persisted', saved.slots['tool.css-to-sass'].css, '.kept { color: red }');
 
-finish('shell', 20);
+finish('shell', 24);

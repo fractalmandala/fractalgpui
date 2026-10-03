@@ -1,12 +1,12 @@
 <script lang="ts">
-	import { active_tool } from '../kernel/tools.svelte.ts';
+	import { active_surface } from '../kernel/surfaces.svelte.ts';
 	import Button from '../ui/Button.svelte';
 	import Icon from '../ui/Icon.svelte';
 	import Pill from '../ui/Pill.svelte';
 
 	// The shared agent panel. UI only: the backend is undecided, so sending is disabled
 	// and the panel says so. Surfaces can replace the body via their manifest's `agent`.
-	const tool = $derived(active_tool());
+	const tool = $derived(active_surface());
 	let draft = $state('');
 </script>
 

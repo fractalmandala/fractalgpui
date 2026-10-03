@@ -2,7 +2,7 @@
 	import { open_palette } from '../kernel/commands.svelte.ts';
 	import { reset_width, set_width, toggle } from '../kernel/layout.svelte.ts';
 	import { settings, switch_to, toggle_theme } from '../kernel/settings.svelte.ts';
-	import { active_tool, tools } from '../kernel/tools.svelte.ts';
+	import { active_surface, surfaces } from '../kernel/surfaces.svelte.ts';
 	import Icon from '../ui/Icon.svelte';
 	import IconButton from '../ui/IconButton.svelte';
 	import Kbd from '../ui/Kbd.svelte';
@@ -14,14 +14,14 @@
 	// actions. Collapsed, it is a 52px rail of icons (`mode="rail"`).
 	let { mode, width }: { mode: 'open' | 'rail'; width: number } = $props();
 
-	const current = $derived(active_tool());
+	const current = $derived(active_surface());
 	const Context = $derived(current.left);
 </script>
 
 {#if mode === 'rail'}
 	<div class="wb-rail box ycenter gap-xs py-sm hfull panel br" testId="left-rail">
 		<div class="wb-brand row xcenter ycenter mb-sm"><text>f</text></div>
-		{#each tools as tool (tool.id)}
+		{#each surfaces as tool (tool.id)}
 			<IconButton icon={tool.icon} active={tool.id === current.id} testId={`rail-${tool.id}`} onclick={() => switch_to(tool.id)} />
 		{/each}
 		<div class="grow"></div>
@@ -41,7 +41,7 @@
 
 		<div class="box gap-xs px-sm pb-sm">
 			<div class="px-sm py-xs"><SectionLabel label="Surfaces" /></div>
-			{#each tools as tool, i (tool.id)}
+			{#each surfaces as tool, i (tool.id)}
 				<div
 					class="wb-nav-item row ycenter gap-sm"
 					class:active={tool.id === current.id}

@@ -23,7 +23,7 @@
  * against both modes.
  */
 
-import { parse, type Declaration, type Node } from '../src/tools/css-to-sass/lib/index.ts';
+import { parse, type Declaration, type Node } from '../src/surfaces/css-to-sass/lib/index.ts';
 import type { ClassRule } from 'gpuix-svelte';
 import { parse_css_text } from 'gpuix-svelte';
 import { irreducible, reduce, substitute, token_block, type TokenSets } from './tokens.ts';

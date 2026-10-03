@@ -2,7 +2,7 @@
 	import { on_window_key } from 'gpuix-svelte';
 	import { close_palette, handle_key, move_selection, palette } from '../kernel/commands.svelte.ts';
 	import { fit, width_of } from '../kernel/layout.svelte.ts';
-	import { active_tool, install } from '../kernel/tools.svelte.ts';
+	import { active_surface, ensure_loaded, install } from '../kernel/surfaces.svelte.ts';
 	import { watch_window, win } from '../kernel/window.svelte.ts';
 	import Tabs from '../ui/Tabs.svelte';
 	import AgentPanel from './AgentPanel.svelte';
@@ -15,7 +15,7 @@
 	install();
 
 	// Regions: left sidebar (or rail) | title bar, tabs, surface, status bar | agent | inspector.
-	const tool = $derived(active_tool());
+	const tool = $derived(active_surface());
 	const widths = $derived({
 		left: width_of('left', tool.id, tool.layout),
 		agent: width_of('agent', tool.id, tool.layout),
@@ -26,6 +26,7 @@
 	const Inspector = $derived(tool.inspector);
 
 	$effect(() => watch_window());
+	$effect(() => ensure_loaded(tool));
 
 	// One window-level key handler: the palette's navigation while it is open,
 	// otherwise the keymap. Enter is the palette input's own `onsubmit`.

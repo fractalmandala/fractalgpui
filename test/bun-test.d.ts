@@ -1,6 +1,6 @@
 // Just enough of `bun:test` for tsc. The app deliberately has no @types/bun (app
 // code sticks to node: APIs, so it stays runnable under Node too); only the
-// UI-free `*.test.ts` files under src/tools/*/lib import bun:test.
+// UI-free `*.test.ts` files under src/surfaces/*/lib import bun:test.
 declare module 'bun:test' {
 	export function describe(name: string, fn: () => void): void;
 	export function test(name: string, fn: () => void | Promise<void>): void;

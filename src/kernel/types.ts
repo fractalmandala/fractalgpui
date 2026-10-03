@@ -20,10 +20,10 @@ export interface Command {
 /**
  * One workbench surface (tool). Self-contained: its page, state (a `.svelte.ts`
  * module, so it outlives the page and hot reloads) and commands live in
- * `src/tools/<id>/`; it reaches the rest of the app only through the kernel. The
+ * `src/surfaces/<id>/`; it reaches the rest of the app only through the kernel. The
  * shell shows a panel only when the surface fills its slot.
  */
-export interface ToolManifest {
+export interface Surface {
 	id: string;
 	title: string;
 	icon: IconName;
@@ -47,4 +47,13 @@ export interface ToolManifest {
 	badge?: () => string | number | null;
 	/** Registered while the app runs; grouped under the surface's title. */
 	commands?: Command[];
+	/** Runs once, the first time the surface becomes active (lazy data loading). */
+	load?: () => void | Promise<void>;
+}
+
+/** A surface that is designed but not built yet: shown on Home as a muted card. */
+export interface PlannedSurface {
+	title: string;
+	icon: IconName;
+	description: string;
 }

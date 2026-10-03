@@ -1,7 +1,7 @@
 /**
  * The test runner: each headless test is its own process (GPUI's test renderer is a
  * per-process singleton and `finish()` exits),
- * plus `bun test` over the UI-free tool logic in `src/tools/<tool>/lib`.
+ * plus `bun test` over the UI-free tool logic in `src/surfaces/<tool>/lib`.
  * Tests get a throwaway settings dir and an in-memory clipboard.
  *
  *   bun run test        (= gpuix-svelte --bun test.ts)
@@ -16,14 +16,14 @@ import { fileURLToPath } from 'node:url';
 const root = dirname(fileURLToPath(import.meta.url));
 const cli = join(root, 'node_modules/gpuix-svelte/bin/gpuix-svelte.js');
 
-const tool_tests = readdirSync(join(root, 'src/tools'))
-	.map((t) => join(root, 'src/tools', t, 'test.ts'))
+const tool_tests = readdirSync(join(root, 'src/surfaces'))
+	.map((t) => join(root, 'src/surfaces', t, 'test.ts'))
 	.filter((f) => existsSync(f));
 const files = [join(root, 'test/styles.ts'), join(root, 'test/ui.ts'), join(root, 'test/layout.ts'), join(root, 'test/shell.ts'), join(root, 'test/panels.ts'), ...tool_tests];
 
 const runs: { name: string; cmd: string; args: string[]; cwd: string }[] = [
 	...files.map((f) => ({ name: relative(root, f), cmd: process.execPath, args: [cli, '--bun', f], cwd: root })),
-	// Pure tool logic (src/tools/<tool>/lib/*.test.ts): plain `bun test`, no renderer.
+	// Pure tool logic (src/surfaces/<tool>/lib/*.test.ts): plain `bun test`, no renderer.
 	{ name: 'src/**/*.test.ts (bun test)', cmd: process.execPath, args: ['test', './src'], cwd: root }
 ];
 

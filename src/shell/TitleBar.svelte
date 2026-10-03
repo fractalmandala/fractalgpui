@@ -1,13 +1,13 @@
 <script lang="ts">
 	import { toggle } from '../kernel/layout.svelte.ts';
-	import { active_tool } from '../kernel/tools.svelte.ts';
+	import { active_surface } from '../kernel/surfaces.svelte.ts';
 	import IconButton from '../ui/IconButton.svelte';
 
 	// The main area's 44px header: surface title, its toolbar, and the right-panel toggles
 	// (shown only for panels the surface has).
 	let { agent, inspector }: { agent: boolean; inspector: boolean } = $props();
 
-	const tool = $derived(active_tool());
+	const tool = $derived(active_surface());
 	const Toolbar = $derived(tool.toolbar);
 </script>
 

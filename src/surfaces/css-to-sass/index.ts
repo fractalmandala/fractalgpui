@@ -1,4 +1,4 @@
-import type { ToolManifest } from '../../kernel/types.ts';
+import type { Surface } from '../../kernel/types.ts';
 import CssToSass from './CssToSass.svelte';
 import Inspector from './Inspector.svelte';
 import Toolbar from './Toolbar.svelte';
@@ -19,4 +19,4 @@ export default {
 		{ id: 'css-to-sass.sample', title: 'Load sample CSS', run: load_sample },
 		{ id: 'css-to-sass.clear', title: 'Clear input', run: clear }
 	]
-} satisfies ToolManifest;
+} satisfies Surface;

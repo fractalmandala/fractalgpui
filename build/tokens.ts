@@ -11,7 +11,7 @@
  * Token blocks are `:root` (both modes) and `[data-mode='light'|'dark']`.
  */
 
-import { parse, type Node } from '../src/tools/css-to-sass/lib/index.ts';
+import { parse, type Node } from '../src/surfaces/css-to-sass/lib/index.ts';
 
 export type Mode = 'light' | 'dark';
 export type TokenMap = Record<string, string>;

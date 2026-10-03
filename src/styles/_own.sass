@@ -248,6 +248,13 @@
 		cursor: pointer
 		&:hover
 			border-color: var(--border-strong)
+	&.planned
+		background-color: var(--bg-surface)
+		border-color: var(--border-subtle)
+
+.wb-tile // A fixed-width card in a Home grid
+	width: 264px
+	flex-shrink: 0
 
 // --- Panels ----------------------------------------------------------------------------
 .wb-sidebar // A resizable side panel; its width is the one inline style (a live number)
@@ -316,6 +323,10 @@
 .wb-titlebar // Main area header
 	height: 44px
 	flex-shrink: 0
+
+.wb-status-link
+	cursor: pointer
+	user-select: none
 
 .wb-statusbar
 	height: 24px
