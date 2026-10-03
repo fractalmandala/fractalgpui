@@ -15,5 +15,6 @@
 			"svelte/*": ["./node_modules/svelte/*"]
 		}
 	},
-	"include": ["*.ts", "build/**/*.ts", "src/**/*.ts", "test/**/*.ts"]
+	"include": ["*.ts", "build/**/*.ts", "src/**/*.ts", "test/**/*.ts"],
+	"exclude": ["build/output"]
 }
