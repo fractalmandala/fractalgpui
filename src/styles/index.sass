@@ -1,0 +1,8 @@
+// The app's stylesheet entry. fractalstyler itself is NOT @use'd here: build/styles.ts
+// compiles it from packages/fractalstyler/src and translates it for GPUI, then adds
+// this file's output after it (so app classes win ties).
+//
+// Closed world: compose fractalstyler classes in markup. App-only classes live in
+// _own.sass and nowhere else; components carry no <style> blocks and no inline style.
+
+@use 'own'

@@ -1,0 +1,92 @@
+// ============================================================================
+// fractalgpui — app-only classes (the one sanctioned extension point, like
+// fractalstyler's _own partial). Everything here must be GPUI-clean: the strict
+// style check fails on any loss in this file. Prefix: wb- (workbench).
+// ============================================================================
+
+// App tokens. Flattened with fractalstyler's (build/tokens.ts) and inlined into
+// rules when they are the same in both modes.
+:root
+	--font-mono: Menlo
+	--wb-rail-width: 208px
+	--wb-glyph: 24px
+	--wb-scrim: rgba(0, 0, 0, 0.45)
+	--wb-palette-width: 560px
+	--wb-palette-top: 96px
+	--wb-palette-list: 320px
+
+// --- Shell: tool rail ---------------------------------------------------------
+.wb-rail // Fixed-width tool rail on the left
+	width: var(--wb-rail-width)
+	flex-shrink: 0
+
+.wb-rail-item // A tool entry in the rail
+	color: var(--text-secondary)
+	cursor: pointer
+	user-select: none
+	&:hover
+		background-color: var(--state-hover)
+	&.active
+		background-color: var(--state-selected)
+		color: var(--text-primary)
+
+.wb-glyph // Square glyph tile (tools have no icon font yet)
+	width: var(--wb-glyph)
+	height: var(--wb-glyph)
+	flex-shrink: 0
+	background-color: var(--bg-raised)
+	color: var(--text-primary)
+
+// --- Buttons -------------------------------------------------------------------
+.wb-btn // Clickable control; compose layout/metrics with fractalstyler classes
+	background-color: var(--bg-raised)
+	color: var(--text-primary)
+	cursor: pointer
+	user-select: none
+	flex-shrink: 0
+	&:hover
+		background-color: var(--state-hover)
+	&.active
+		background-color: var(--state-selected)
+	&.primary
+		background-color: var(--theme-color)
+		color: var(--white-fixed)
+		&:hover
+			background-color: var(--theme-color-alt)
+	&.ghost
+		background-color: transparent
+		&:hover
+			background-color: var(--state-hover)
+
+// --- Command palette --------------------------------------------------------------
+.wb-scrim // Full-window dimmer behind the palette
+	position: absolute
+	inset: 0
+	padding-top: var(--wb-palette-top)
+	background-color: var(--wb-scrim)
+
+.wb-palette // The palette dialog
+	width: var(--wb-palette-width)
+
+.wb-palette-list // Bounded, scrolling result list
+	max-height: var(--wb-palette-list)
+
+.wb-palette-item // One result row
+	cursor: pointer
+	user-select: none
+	&:hover
+		background-color: var(--state-hover)
+	&.active
+		background-color: var(--state-selected)
+
+// --- Home --------------------------------------------------------------------------
+.wb-card // A clickable tool card
+	cursor: pointer
+	&:hover
+		background-color: var(--state-hover)
+
+// --- Editors ---------------------------------------------------------------------------
+.wb-editor // Multi-line text field; height comes from its rows, not CSS
+	width: 100%
+	background-color: var(--bg-input)
+	color: var(--text-primary)
