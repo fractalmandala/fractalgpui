@@ -4,23 +4,23 @@
 // style check fails on any loss in this file. Prefix: wb- (workbench).
 // ============================================================================
 
-// App tokens. Flattened with fractalstyler's (build/tokens.ts) and inlined into
-// rules when they are the same in both modes.
+// App tokens. Flattened with fractalstyler's (build/tokens.ts). Rules below read
+// every size through var(--token) and stay live: set_css_vars repaints them.
 :root
 	// Fonts: GPUI loads no font files; it uses fonts installed on the Mac by family
 	// name. The installed variable TTFs register as "General Sans Variable".
 	--font-sans: General Sans Variable
 	--font-mono: Menlo
-	// Accent: Amrit's greenpop scale, the same in both modes.
+	// Accent: Amrit's greenpop scale, the same in both modes. greenpop2/3 are
+	// fractalstyler's own; 1 and 4 are swapped relative to it (literals: a var()
+	// to each other would be circular).
 	--greenpop1: #00e676
-	--greenpop2: #00df89
-	--greenpop3: #69ff97
 	--greenpop4: #70e000
 	--accent: var(--greenpop1)
 	--accent-hover: var(--greenpop2)
 	--accent-soft: var(--greenpop3)
 	// Text on a green surface: black reads at ~13:1 on #00e676; white fails (1.6:1).
-	--on-accent: #000000
+	--on-accent: var(--black-fixed)
 	--wb-scrim: rgba(0, 0, 0, 0.45)
 	--wb-palette-width: 560px
 	--wb-palette-top: 96px
@@ -33,12 +33,11 @@
 	// fractalstyler sets its accent per mode, so the override must be per mode too.
 	--theme-color: var(--greenpop1)
 	--theme-color-alt: var(--greenpop2)
-	--bg: #FFFFFF
-	--bg-surface: #FAFAFA
+	--bg: var(--white-fixed)
 	--bg-panel: #FAFAFA
-	--bg-raised: #FFFFFF
+	--bg-raised: var(--white-fixed)
 	--bg-sunken: #F5F5F5
-	--bg-input: #FFFFFF
+	--bg-input: var(--white-fixed)
 	--bg-extra: #F5F5F5
 	--bg-button: #F5F5F5
 	--border: #EBEBEB
@@ -75,7 +74,7 @@
 
 // --- Type ---------------------------------------------------------------------------
 .wb-label // Small muted section label
-	font-size: 11px
+	font-size: var(--text-xs)
 	font-weight: 500
 	color: var(--text-muted)
 
@@ -87,23 +86,23 @@
 
 // --- Icons -----------------------------------------------------------------------------
 .wb-icon
-	width: 16px
-	height: 16px
+	width: var(--height-sm)
+	height: var(--height-sm)
 	flex-shrink: 0
 
 .wb-icon-sm
-	width: 14px
-	height: 14px
+	width: var(--height-sm)
+	height: var(--height-sm)
 
 .wb-icon-lg
-	width: 20px
-	height: 20px
+	width: var(--height-md)
+	height: var(--height-md)
 
 .wb-icon-btn // Square borderless icon control
-	width: 28px
-	height: 28px
+	width: var(--control-h-bs)
+	height: var(--control-h-bs)
 	flex-shrink: 0
-	border-radius: 8px
+	border-radius: var(--radius-md)
 	cursor: pointer
 	user-select: none
 	&:hover
@@ -113,15 +112,15 @@
 
 // --- Buttons ---------------------------------------------------------------------------
 .wb-btn // Clickable control; default is a bordered neutral button
-	height: 28px
-	padding: 0 10px
+	height: var(--control-h-bs)
+	padding: 0 var(--space-md)
 	flex-shrink: 0
-	border-radius: 8px
+	border-radius: var(--radius-md)
 	border-width: 1px
 	border-color: var(--border)
 	background-color: var(--bg-raised)
 	color: var(--text-primary)
-	font-size: 12px
+	font-size: var(--text-sm)
 	font-weight: 500
 	cursor: pointer
 	user-select: none
@@ -146,18 +145,18 @@
 
 // --- Tabs ------------------------------------------------------------------------------
 .wb-tabs // Underline tab row
-	height: 40px
+	height: var(--control-h-lg)
 	flex-shrink: 0
 	border-bottom-width: 1px
 	border-color: var(--border)
 
 .wb-tab
-	height: 40px
-	padding: 0 8px
+	height: var(--control-h-lg)
+	padding: 0 var(--space-sm)
 	border-bottom-width: 2px
 	border-color: transparent
 	color: var(--text-secondary)
-	font-size: 13px
+	font-size: var(--text-sm)
 	font-weight: 500
 	cursor: pointer
 	user-select: none
@@ -169,21 +168,21 @@
 
 // --- Segmented control -----------------------------------------------------------------
 .wb-seg
-	padding: 2px
-	gap: 2px
-	border-radius: 8px
+	padding: var(--space-xs)
+	gap: var(--space-xs)
+	border-radius: var(--radius-md)
 	border-width: 1px
 	border-color: var(--border-subtle)
 	background-color: var(--bg-sunken)
 
 .wb-seg-item
-	height: 24px
-	padding: 0 10px
-	border-radius: 6px
+	height: var(--height-bs)
+	padding: 0 var(--space-sm)
+	border-radius: var(--radius-sm)
 	border-width: 1px
 	border-color: transparent
 	color: var(--text-secondary)
-	font-size: 12px
+	font-size: var(--text-sm)
 	font-weight: 500
 	cursor: pointer
 	user-select: none
@@ -200,34 +199,37 @@
 	user-select: none
 
 .wb-toggle // Switch track
-	width: 30px
-	height: 18px
-	padding: 2px
+	width: var(--switch-w)
+	height: var(--switch-h)
+	padding: 2px // fractalstyler .switch-track geometry: 1px border + 2px padding around --switch-thumb = --switch-h
+	border-width: 1px
 	flex-shrink: 0
-	border-radius: 9px
+	border-radius: var(--radius-full)
 	background-color: var(--border-strong)
+	border-color: var(--border-strong)
 	justify-content: start
 	&.on
 		background-color: var(--accent)
+		border-color: var(--accent)
 		justify-content: end
 
 .wb-toggle-knob
-	width: 14px
-	height: 14px
-	border-radius: 7px
+	width: var(--switch-thumb)
+	height: var(--switch-thumb)
+	border-radius: var(--radius-full)
 	background-color: var(--white-fixed)
 
 // --- Pill ------------------------------------------------------------------------------
 .wb-pill
-	height: 20px
-	padding: 0 8px
+	height: var(--height-md)
+	padding: 0 var(--space-sm)
 	flex-shrink: 0
-	border-radius: 10px
+	border-radius: var(--radius-full)
 	border-width: 1px
 	border-color: var(--border-subtle)
 	background-color: var(--bg-sunken)
 	color: var(--text-secondary)
-	font-size: 11px
+	font-size: var(--text-xs)
 	font-weight: 500
 	&.accent
 		background-color: var(--accent)
@@ -239,8 +241,8 @@
 
 // --- Card ------------------------------------------------------------------------------
 .wb-card // Soft rounded card
-	padding: 16px
-	border-radius: 12px
+	padding: var(--space-bs)
+	border-radius: var(--radius-md)
 	border-width: 1px
 	border-color: var(--border)
 	background-color: var(--bg-raised)
@@ -250,19 +252,19 @@
 			border-color: var(--border-strong)
 
 .wb-tile // A fixed-width card in a Home grid
-	width: 264px
+	width: var(--card-min)
 	flex-shrink: 0
 
 // --- Panels ----------------------------------------------------------------------------
 .wb-panel-header
-	height: 44px
+	height: var(--control-h-lg)
 	flex-shrink: 0
 
 .wb-splitter // Drag handle on a panel's inner edge (inside a relative panel)
 	position: absolute
 	top: 0
 	bottom: 0
-	width: 5px
+	width: var(--space-xs)
 	cursor: col-resize
 	&.at-right
 		right: 0
@@ -285,7 +287,7 @@
 	width: 52px
 
 .section-sidebar-left-header, .section-sidebar-panel-header, .section-sidebar-right-header, .section-main-header
-	height: 44px
+	height: var(--control-h-lg)
 	flex-shrink: 0
 
 .section-sidebar-left-footer
@@ -300,26 +302,26 @@
 	min-height: 0
 
 .section-main-footer // The status bar
-	height: 24px
+	height: var(--height-bs)
 	flex-shrink: 0
 	background-color: var(--bg-surface)
 
 .wb-brand // The app mark
-	width: 24px
-	height: 24px
+	width: var(--height-bs)
+	height: var(--height-bs)
 	flex-shrink: 0
-	border-radius: 6px
+	border-radius: var(--radius-sm)
 	background-color: var(--accent)
 	color: var(--on-accent)
-	font-size: 13px
+	font-size: var(--text-sm)
 	font-weight: 700
 
 .wb-nav-item // A surface in the left nav
-	height: 32px
-	padding: 0 8px
-	border-radius: 8px
+	height: var(--height-lg)
+	padding: 0 var(--space-sm)
+	border-radius: var(--radius-md)
 	color: var(--text-secondary)
-	font-size: 13px
+	font-size: var(--text-sm)
 	font-weight: 500
 	cursor: pointer
 	user-select: none
@@ -331,8 +333,8 @@
 		color: var(--text-primary)
 
 .wb-glyph // Square icon tile (empty states, cards)
-	width: 32px
-	height: 32px
+	width: var(--height-lg)
+	height: var(--height-lg)
 	flex-shrink: 0
 	border-width: 1px
 	border-color: var(--border)

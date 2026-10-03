@@ -311,17 +311,23 @@ export interface TranslateOptions {
 	/** Name for the ledger, e.g. `fractalstyler/_04_containers.sass`. */
 	source: string;
 	tokens: TokenSets;
+	/**
+	 * Keep every `var(--token)` as a runtime variable instead of inlining the
+	 * mode-invariant ones, so a later `set_css_vars` repaints this sheet live (the
+	 * app's own sheet; values are still validated against both modes).
+	 */
+	live?: boolean;
 }
 
 const weight = (rule: ClassRule) => rule.classes.length * 2 + (rule.tag === null ? 0 : 1);
 
-export function translate_css(css: string, { source, tokens }: TranslateOptions): Translation {
+export function translate_css(css: string, { source, tokens, live = false }: TranslateOptions): Translation {
 	const rules: ClassRule[] = [];
 	const losses: Loss[] = [];
 	const defined = new Set<string>();
 
-	const inline = (value: string) => reduce(substitute(value, (name) => tokens.invariant[name]));
 	const runtime = (value: string, mode: 'light' | 'dark') => reduce(substitute(value, (name) => tokens[mode][name]));
+	const inline = (value: string) => (live ? value : reduce(substitute(value, (name) => tokens.invariant[name])));
 
 	const lose = (selector: string, kind: Loss['kind'], detail: string, reason: string) =>
 		losses.push({ selector, classes: classes_in(selector), kind, detail, reason, source });
@@ -363,7 +369,7 @@ export function translate_css(css: string, { source, tokens }: TranslateOptions)
 			const decls = node.children.filter((c): c is Declaration => c.type === 'decl' && !c.prop.startsWith('--'));
 			// A font-size in the same rule lets a unitless line-height become px.
 			const fs = decls.find((d) => d.prop === 'font-size');
-			const fs_value = fs ? inline(fs.value) : null;
+			const fs_value = fs ? (live ? runtime(fs.value, 'light') : inline(fs.value)) : null;
 			const font_px = fs_value && PX_OR_NUM.test(fs_value) ? parseFloat(fs_value) : null;
 
 			const out: string[] = [];

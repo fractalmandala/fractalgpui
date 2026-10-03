@@ -1,6 +1,6 @@
 # Token audit — hard-coded style values vs fractalstyler tokens
 
-Read-only audit of `apps/fractalgpui` as of commit `19968de`. No code was changed.
+Baseline audit of `apps/fractalgpui` at commit `19968de` (the tables after **Current state** describe that baseline). The values were then snapped to tokens; **Current state** below is what holds now.
 
 **Scope.** `src/styles/_own.sass`, every `.svelte` file (inline `style`, `hover=` / `active=` attributes, motion), and TS that sets sizes or colours (`src/kernel/layout.svelte.ts`, `src/kernel/window.svelte.ts`, `src/app.ts`, plus constants in component scripts).
 **Reference.** Token values are fractalstyler's (`packages/fractalstyler/src/lib/styles/_00_tokens.sass` and the files it pulls in), flattened to px by our adapter (`build/tokens.ts` + `build/fractalstyler.ts`). This is the same map `design.tokens` hands to `set_css_vars` at runtime.
@@ -12,7 +12,44 @@ Read-only audit of `apps/fractalgpui` as of commit `19968de`. No code was change
 
 Excluded: `0`, `100%`, `transparent`, values already written as `var(--…)`, and the sample CSS strings in CSS→Sass (those are content, not styling).
 
-## Counts
+## Current state (after snapping to tokens)
+
+Every audited size in `_own.sass` now reads a fractalstyler token through `var(--token)`. The app's own sheet is translated with `live: true` (`build/gpui-css.ts`, `build/styles.ts`), which keeps those `var()`s as runtime variables instead of inlining them at build time. A `set_css_vars` call with an edited token map (the live editor) therefore repaints `_own.sass` rules without a rebuild. The flattened map that `App.svelte` already hands to `set_css_vars` (`design.tokens[mode]`) carries every name these rules read. `test/styles.ts` checks this in both modes and fails on any new literal px for font-size / padding / margin / gap / width / height / radius.
+
+| Baseline verdict | Count | Now |
+|---|---|---|
+| exact | 41 | **31 reference tokens via `var()`.** That covers 25 `_own.sass` rule values, plus `--bg`, `--bg-raised` and `--bg-input` (light) → `var(--white-fixed)`; `--bg-surface` (light) and `--greenpop2/3` drop their identical overrides and inherit fractalstyler's. **10 stay literal:** the 7 font weights (fractalstyler has `.weight-N` classes but no weight token a rule can read), `--greenpop1/4` (swapped against fractalstyler; a `var()` to each other would be circular), and the CSS→Sass textarea row (20px is GPUI's row height, not ours). |
+| nearest | 32 | **31 snapped** to the token named in the baseline: 27 in `_own.sass` rules, `--on-accent` → `var(--black-fixed)`, and the 3 sidebar defaults, which now read `--sidebar-width-left` / `--sidebar-width` / `--sidebar-width-right` (280px each) from `design.tokens` in `kernel/layout`. **1 kept:** `.wb-toggle` padding 2px. This is fractalstyler's own switch geometry: `.switch-track` is a 1px border + 2px padding around `--switch-thumb`, which makes `--switch-h`. With 4px padding the 16px thumb would not fit, so the toggle now has a 1px track-coloured border like fractalstyler's. |
+| no token | 51 | Unchanged: palette colour overrides, border widths, layout widths, palette geometry, window sizes. One documented no-token literal was added: the toggle's 1px border. |
+
+Where the baseline listed two equally near tokens, this was picked:
+- `.wb-btn` / `.wb-icon-btn` 28 → `--control-h-bs` 32.
+- `.wb-btn` padding-x 10 → `--space-md` 12; `.wb-seg-item` padding-x 10 → `--space-sm` 8.
+- 13px control text → `--text-sm` 12.
+- `.wb-seg-item` / `.wb-brand` radius 6 → `--radius-sm` 4 (nests inside the 8px segment with 4px padding).
+- `.wb-card` radius 12 → `--radius-md` 8.
+
+Literal px still allowed in `_own.sass`, as listed in `test/styles.ts` `LITERAL_OK`:
+- `.wb-toggle padding: 2px` (switch geometry).
+- `.section-sidebar-left.rail width: 52px` (layout, kernel/layout `RAIL`).
+- Border widths (1px, plus the 2px tab underline) are outside the checked properties and stay literal (no token).
+- `:root --wb-palette-*` geometry is a custom-property definition, not a rule value.
+
+**What changed visually**
+- Buttons and icon buttons: 28 → 32 tall.
+- Tab bar: 40 → 38.
+- All section/panel headers: 44 → 38.
+- Segmented control: outer padding/gap 2 → 4, item radius 6 → 4, item padding-x 10 → 8.
+- Toggle: 30×18 / 14px knob → 40×22 / 16px thumb.
+- Labels and pills: 11 → 10.72px text.
+- Tabs, nav items and the brand: 13 → 12px text.
+- Card radius: 12 → 8.
+- Home tile: 264 → 240 wide.
+- Splitter: 5 → 4.
+- Text on the accent: #000 → #171717.
+- Sidebar defaults: 240 / 340 / 300 → 280 / 280 / 280. Widths the user has already resized are kept.
+
+## Baseline counts (19968de)
 
 | | exact | nearest | no token | total |
 |---|---|---|---|---|
@@ -23,7 +60,7 @@ Excluded: `0`, `100%`, `transparent`, values already written as `var(--…)`, an
 
 `.svelte` components have **no** hard-coded style values. Their markup uses only fractalstyler classes (`text-sm`, `weight-600`, `pad-md`, `gap-md`, `text-primary`, …), which are token-backed already. There are no `hover=` / `active=` attributes and no motion. The only inline `style` is `width: ${width}px` in `shell/SidebarLeft.svelte` and `surfaces/tools/Sidebar.svelte`, and it carries the live widths from `kernel/layout` (counted under TS).
 
-## Biggest offenders
+## Biggest offenders (baseline)
 
 1. **The app palette overrides almost every fractalstyler colour role.** In light mode, 15 of 17 overridden roles differ from fractalstyler's value. Only `--bg` and `--bg-surface` match; `--bg-raised` and `--bg-input` are re-pointed to pure white (= `--white-fixed`). In dark mode all 17 differ: the app uses a near-black ladder (#000 → #0A0A0A → #111111) where fractalstyler uses #101010 / #202021 / #3a3a3a, plus much darker hover/selected colours (#151517 / #1C1C1F vs #4a4a4b / #666668). `--ring` is overridden in both modes. That is 30 "no token" colour values, the largest single block. `--greenpop1` and `--greenpop4` are swapped relative to fractalstyler.
 2. **Off-scale control heights: 28 / 40 / 44px.** Buttons and icon buttons are 28 (between `--height-bs` 24 and `--control-h-bs` 32). Tabs are 40 (`--control-h-lg` 38, Δ +2). All five section and panel headers are 44 (`--control-h-lg` 38, Δ +6; no taller height token exists short of `--header-height` 80).

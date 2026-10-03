@@ -59,7 +59,7 @@ check('sidebar-panel and sidebar-right start collapsed', [has('section-sidebar-p
 click_test_id('toggle-sidebar-panel');
 click_test_id('toggle-sidebar-right');
 check('the header toggles open them', [has('section-sidebar-panel'), has('section-sidebar-right')], [true, true]);
-check('sidebars start at their default widths', [near(width('section-sidebar-left'), 240), near(width('section-sidebar-panel'), 340), near(width('section-sidebar-right'), 300)], [true, true, true]);
+check('sidebars start at their default widths', [near(width('section-sidebar-left'), 280), near(width('section-sidebar-panel'), 280), near(width('section-sidebar-right'), 280)], [true, true, true]);
 check('sidebars are empty containers unless the surface fills them', [has('section-sidebar-panel-body'), has('section-sidebar-right-body'), all_text_in('section-sidebar-panel').length, all_text_in('section-sidebar-right').length], [true, true, 0, 0]);
 check('main is not collapsible', !has('section-main-collapse') && !has('toggle-section-main'));
 
@@ -90,20 +90,20 @@ check('⌘\\ again opens them all', [has('section-sidebar-left'), has('section-s
 
 // resize
 drag('sidebar-left-splitter', 60);
-check('dragging the left splitter widens the sidebar', [width_of(L, css()), near(width('section-sidebar-left'), 300)], [300, true]);
+check('dragging the left splitter widens the sidebar', [width_of(L, css()), near(width('section-sidebar-left'), 340)], [340, true]);
 drag('sidebar-panel-splitter', -80);
-check('dragging a right splitter leftwards widens that sidebar', [width_of(P, css()), near(width('section-sidebar-panel'), 420)], [420, true]);
+check('dragging a right splitter leftwards widens that sidebar', [width_of(P, css()), near(width('section-sidebar-panel'), 360)], [360, true]);
 drag('sidebar-left-splitter', 500);
 check('widths clamp to the maximum', width_of(L, css()), LIMITS[L].max);
 
 // per surface
 press('cmd-1');
-check('another surface keeps its own (default) width', near(width('section-sidebar-left'), 240));
+check('another surface keeps its own (default) width', near(width('section-sidebar-left'), 280));
 check('another surface keeps its own open state (collapsed default)', [has('section-sidebar-panel'), has('section-sidebar-right')], [false, false]);
 click_test_id('toggle-sidebar-right');
 check('home toggles are its own', [has('section-sidebar-right'), has('section-sidebar-panel')], [true, false]);
 press('cmd-2');
-// (sidebar-right is open but fitted out: 360 + 420 + 300 leaves main under MAIN_MIN at 1400px)
+// (sidebar-right is open but fitted out: 360 + 360 + 280 leaves main under MAIN_MIN at 1400px)
 check('switching back restores that surface\'s width and open state', [near(width('section-sidebar-left'), LIMITS[L].max), has('section-sidebar-panel'), is_collapsed(R, css()), has('section-sidebar-right')], [true, true, false, false]);
 press('cmd-1');
 check('and home\'s', [has('section-sidebar-panel'), has('section-sidebar-right')], [false, true]);

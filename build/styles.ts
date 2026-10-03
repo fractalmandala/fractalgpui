@@ -5,6 +5,10 @@
  *                       ├→ tokens.ts (flatten)├→ design.tokens (light/dark) → set_css_vars
  *   src/styles (_own)  ─┘   gpui-css.ts ──────┴→ losses (the strict check reads these)
  *
+ * The app's own sheet keeps its `var(--token)`s live (resolved by set_css_vars at
+ * runtime), so a token edit repaints it without a rebuild; fractalstyler's sheets
+ * get their mode-invariant tokens inlined.
+ *
  * Components carry plain `class="…"` and no `<style>` block (fractalstyler's
  * closed world). App-only classes live in `src/styles/_own.sass`.
  */
@@ -63,7 +67,7 @@ export function build_styles({ prune = true, fractalstylerDir, appStyles = APP_S
 	const losses: Loss[] = [];
 	const defined = new Set<string>();
 	for (const sheet of [...fs.sheets, { source: OWN, css: own_css }]) {
-		const t = translate_css(sheet.css, { source: sheet.source, tokens });
+		const t = translate_css(sheet.css, { source: sheet.source, tokens, live: sheet.source === OWN });
 		rules.push(...t.rules);
 		losses.push(...t.losses);
 		for (const c of t.defined) defined.add(c);

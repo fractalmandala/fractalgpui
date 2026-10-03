@@ -13,7 +13,7 @@ const b = { id: 'b' };
 const a_wide = { id: 'a', layout: { [R]: 360 } };
 const b_wide = { id: 'b', layout: { [R]: 360 } };
 
-check('defaults when nothing is stored', [width_of(L, a), width_of(P, a), width_of(R, a)], [240, 340, 300]);
+check('defaults when nothing is stored', [width_of(L, a), width_of(P, a), width_of(R, a)], [280, 280, 280]);
 check('a surface default applies until resized', width_of(R, a_wide), 360);
 set_width(R, a, 320);
 check('a resize wins over the default', width_of(R, a_wide), 320);

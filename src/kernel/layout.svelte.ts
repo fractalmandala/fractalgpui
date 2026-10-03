@@ -16,6 +16,7 @@
  * Everything persists through `persisted('shell')` (debounced JSON write).
  */
 
+import { design } from './design.svelte.ts';
 import { persisted } from './storage.svelte.ts';
 
 export type Region = 'sidebar-left' | 'sidebar-panel' | 'sidebar-right';
@@ -24,10 +25,32 @@ export type SurfaceRegion = Exclude<Region, 'sidebar-left'>;
 export const REGIONS: Region[] = ['sidebar-left', 'sidebar-panel', 'sidebar-right'];
 export const SURFACE_REGIONS: SurfaceRegion[] = ['sidebar-panel', 'sidebar-right'];
 
-export const LIMITS: Record<Region, { min: number; max: number; default: number }> = {
-	'sidebar-left': { min: 200, max: 360, default: 240 },
-	'sidebar-panel': { min: 280, max: 520, default: 340 },
-	'sidebar-right': { min: 260, max: 420, default: 300 }
+/** The fractalstyler token each sidebar's default width reads (all 280px today). */
+export const WIDTH_TOKENS: Record<Region, string> = {
+	'sidebar-left': 'sidebar-width-left',
+	'sidebar-panel': 'sidebar-width',
+	'sidebar-right': 'sidebar-width-right'
+};
+/** fractalstyler's `--sidebar-width`, for before the style build has published tokens. */
+const SIDEBAR_WIDTH = 280;
+
+const token_px = (name: string) => {
+	const v = parseFloat(design.tokens.light[name] ?? '');
+	return Number.isFinite(v) ? v : SIDEBAR_WIDTH;
+};
+const limits = (region: Region, min: number, max: number) => ({
+	min,
+	max,
+	/** The flattened fractalstyler token, so a token change moves the default too. */
+	get default() {
+		return token_px(WIDTH_TOKENS[region]);
+	}
+});
+
+export const LIMITS: Record<Region, { min: number; max: number; readonly default: number }> = {
+	'sidebar-left': limits('sidebar-left', 200, 360),
+	'sidebar-panel': limits('sidebar-panel', 280, 520),
+	'sidebar-right': limits('sidebar-right', 260, 420)
 };
 
 /** Open/collapsed when neither the user nor the surface has said otherwise (wireframe: collapsed-default). */
