@@ -21,7 +21,7 @@ Needs Bun ≥ 1.4 on `PATH` (tested with `~/.bun/bin/bun` 1.4.2) because the scr
 |---|---|
 | ⌘K | Command palette (type to filter, ↑/↓, ⏎, esc) |
 | ⌘1 … ⌘9 | Switch to surface N |
-| ⌘B | Left sidebar ↔ icon rail |
+| ⌘B | Left sidebar show / hide |
 | ⌘J / ⌘I | sidebar-panel / sidebar-right |
 | ⌘\\ | Collapse / reopen every sidebar |
 | ⌃⇥ / ⌃⇧⇥ | Next / previous tab |
@@ -32,15 +32,22 @@ Window, as in `assets/wireframe-v1.png`:
 
 | Section | Parts | Collapsible |
 |---|---|---|
-| `section-sidebar-left` | header (brand), body (surface nav + the surface's context), footer (app actions) | yes, to a 52px icon rail; open by default; app-wide, persists |
-| `section-main` | header (title, toolbar, sidebar toggles), body (tabs + surface), footer (status bar) | never |
+| `section-sidebar-left` | header (surface nav in a row, theme toggle), body (the surface's context) | yes, animated to 0 width; open by default; app-wide, persists |
+| `section-main` | header (sidebar toggle, surface tabs, toolbar, panel toggles), body (surface), footer (status bar) | never |
 | `section-sidebar-panel` | header, body | yes; collapsed by default; per surface, persists |
 | `section-sidebar-right` | header, body | yes; collapsed by default; per surface, persists |
 
 A surface may declare its own defaults for sidebar-panel / sidebar-right
 (`Surface.collapsed`); once you toggle one on a surface, that choice is kept for that
 surface, so switching surfaces restores each one's own state. Unfilled sections are
-empty containers. Sidebars resize by their splitter (double-click resets), widths are
+empty containers.
+
+Header contract: the main header owns the whole strip — the sidebar-left toggle on
+the left, the surface's `tabs` in the dynamic middle, then the surface `toolbar`
+and the panel toggles on the right. A surface never renders its own header row.
+Sidebars collapse by animating their width to 0 through the native `motion` prop
+(CSS `transition` is ignored); drags resize with a zero-length transition so the
+edge tracks 1:1. Sidebars resize by their splitter (double-click resets), widths are
 kept per surface, and sidebars that don't fit the window drop out (sidebar-right
 first) without changing your choice.
 
@@ -63,8 +70,8 @@ warnings show in the status bar (click for detail, or "Show style diagnostics").
 | `src/ui/` | Primitives: `Icon` (Lucide SVGs in `assets/icons`), `IconButton`, `Button`, `Tabs`, `Segmented`, `Toggle`, `Pill`, `Card`, `SectionLabel`, `PanelHeader`, `Splitter`, `Kbd`. |
 | `src/surfaces/<id>/` | One folder per surface: `index.ts` manifest, `state.svelte.ts`, components, `test.ts` (headless), `lib/` (UI-free logic + `*.test.ts`). |
 | `src/surfaces/index.ts` | Nav order. Adding a surface = a folder + one line here. |
-| `src/surfaces/tools/` | The Tools surface: `types.ts` (the `Tool` contract), `registry.ts` (tool order), `state.svelte.ts` (selected tool), and one folder per tool, `tools/<id>/`, laid out like a surface. A tool gives `component` (main body), and optionally `toolbar` (main header), `sidebar` (left body, under the tool list), `tabs`, `commands` (running one opens Tools on that tool), `load()`. Adding a tool = a folder + one line in `registry.ts`. Tools: `css-to-sass` (CSS ⇄ Sass), `react-to-svelte` (React TSX → Svelte 5; one tab per output file). |
-| `src/styles/` | `index.sass` → `_own.sass`, the one place for app-only classes. |
+| `src/surfaces/tools/` | The Tools surface: `types.ts` (the `Tool` contract), `registry.ts` (tool order), `state.svelte.ts` (selected tool), and one folder per tool, `tools/<id>/`, laid out like a surface. A tool gives `component` (main body), and optionally `toolbar` (main header, right side), `sidebar` (left body, under the tool list), `tabs` (main header middle), `commands` (running one opens Tools on that tool), `load()`. Adding a tool = a folder + one line in `registry.ts`. Tools: `css-to-sass` (CSS ⇄ Sass), `react-to-svelte` (React TSX → Svelte 5; one tab per output file). |
+| `src/styles/` | The design system: `index.sass` composes the `_00_*`…`_09_*` partials (tokens, dimensions, typography, containers, layouts, shells, interactions, visuals, its own). `_own.sass` is the one place for app-only classes. |
 | `test/` | `harness.ts`, `styles.ts` (strict style check), `ui.ts` (primitives), `layout.ts` (panel state), `panels.ts` (collapse, resize), `shell.ts` (nav, Home, keymap, palette, theme, persistence). |
 | `test.ts` | Runs every headless suite in its own process, then `bun test ./src`. |
 | `vendor/` | The custom-renderer Svelte build `gpuix-svelte` requires. |
@@ -73,8 +80,8 @@ warnings show in the status bar (click for detail, or "Show style diagnostics").
 
 fractalstyler is read, never modified. `build/styles.ts` does, on start and every reload:
 
-1. **Compile fractalstyler from `packages/fractalstyler/src/lib/styles`** (src, not the
-   stale `dist`). Its `index.sass` first; if that fails (it does mid-refactor), all
+1. **Compile the design system from `src/styles`** (the `_NN_*` partials, via
+   `index.sass`). Its `index.sass` first; if that fails (it does mid-refactor), all
    `_NN_*` partials in order; if that fails, each partial alone. Fallbacks show as a
    warning in the console and on Home. `FRACTALSTYLER_STYLES` points elsewhere.
 2. **Flatten tokens** (`build/tokens.ts`): nested `var()`, `calc()` and `rem` → px
@@ -95,7 +102,7 @@ listed with a reason in `build/allow.ts`, and on *any* loss in `_own.sass`.
 
 Rules of the road (fractalstyler's closed world):
 
-- Compose fractalstyler classes in markup. No `<style>` blocks, no inline `style`.
+- Compose fractalstyler classes in markup. No `<style>` blocks, no inline `style` — except the colour picker's swatches, whose exact values are unknowable at build.
 - App-only classes go in `src/styles/_own.sass`, prefixed `wb-`.
 - **Write class names literally** (`class:active`, `'text-danger'`), never built from
   strings at runtime, or pruning and the check cannot see them.
@@ -107,7 +114,7 @@ Rules of the road (fractalstyler's closed world):
 - **Surfaces** are `Surface`s (`src/kernel/types.ts`): id, title, icon, description,
   component, and optional slots: `sections['sidebar-left'].body` (context under
   the nav), `sections['sidebar-panel']` / `sections['sidebar-right']` (`{ header?,
-  body? }`), `collapsed` (their default open state), `toolbar` (main header), `tabs`,
+  body? }`), `collapsed` (their default open state), `toolbar` (main header right), `tabs` (main header middle),
   `layout` (default widths), `badge`, `commands`, `load()` (runs once on
   first show). Commands are registered at start-up and grouped under the title.
 - **Bus** (`kernel/bus.ts`, events typed in `kernel/events.ts`): surfaces talk through
@@ -132,7 +139,7 @@ Rules of the road (fractalstyler's closed world):
 
 GPUI has no CSS engine: flexbox only, no window resize event (`kernel/window.svelte.ts` polls),
 fonts by installed family name only ("General Sans Variable"), `<svg src>` for tintable
-icons, and `<code>`'s highlighter assumes a dark background (no `sass` grammar);, `px`, `:hover`/`:active`, `var(--token)`. No
+icons, and `<code>`'s highlighter assumes a dark background (Sass output is shown with the `css` grammar, the closest it offers);, `px`, `:hover`/`:active`, `var(--token)`. No
 `rem`, `box-shadow`, `transition`, descendant selectors or `margin: 0 auto` (the adapter
 handles what it can and reports the rest). Use `{#if}` instead of `display: none`, put
 `hitbox="self"` on clickable elements that contain children, and remember there is no
