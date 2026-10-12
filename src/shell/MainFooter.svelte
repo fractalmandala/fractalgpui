@@ -1,16 +1,16 @@
 <script lang="ts">
 	import { design } from '../kernel/design.svelte.ts';
+	import { focused_view } from '../kernel/dock/dock.svelte.ts';
+	import { show_style_diagnostics, view_of } from '../kernel/views.svelte.ts';
 	import { status } from '../kernel/status.svelte.ts';
-	import { active_surface, show_style_diagnostics } from '../kernel/surfaces.svelte.ts';
 
-
-	const tool = $derived(active_surface());
+	const focused = $derived(view_of(focused_view() ?? '')?.title ?? '');
 </script>
 
-<!-- section-main-footer: the status bar. The right side carries only the style-warning link. -->
-<div class="section-main-footer row ycenter xbetween px-md" testId="section-main-footer">
+<!-- section-main-footer: the status bar (the focused view, flashes, the style-warning link). -->
+<div class="section-main-footer row ycenter xbetween" testId="section-main-footer">
 	<div class="row ycenter gap-md min0">
-		<text class="text-secondary">{tool.title}</text>
+		<text class="text-secondary" testId="footer-focus">{focused}</text>
 		{#if status.message}
 			<text
 				testId="status-message"

@@ -31,7 +31,7 @@
 				</SectionLabel>
 			</div>
 			{#each r2s_tool.history as h, i (h.at + ':' + i)}
-				<div class="nav-section row ycenter gap-sm" class:active={r2s_tool.source === h.source} hitbox="self" testId={`r2s-history-${i}`} onclick={() => replace_input(h.source)}>
+				<div class="wb-row-item row ycenter gap-sm" class:active={r2s_tool.source === h.source} hitbox="self" testId={`r2s-history-${i}`} onclick={() => replace_input(h.source)}>
 					<Icon name="history" tone="secondary" />
 					<text class="nav-section-title grow min0 truncate">{headline(h.source)}</text>
 					<text class="nav-section-small">{ago(h.at)}</text>

@@ -284,7 +284,7 @@
 			{#each keyRows() as p (p.id)}
 				<!-- svelte-ignore a11y_click_events_have_key_events -->
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
-				<div class="nav-section row ycenter gap-sm" hitbox="self" testId={`${testId}-key-${p.id}`} onclick={() => openKey(p.id, p.name)}>
+				<div class="wb-row-item row ycenter gap-sm" hitbox="self" testId={`${testId}-key-${p.id}`} onclick={() => openKey(p.id, p.name)}>
 					<div class="wb-glyph row xcenter ycenter shrink-0"><text class="text-sm text-secondary">{p.name.slice(0, 1).toUpperCase()}</text></div>
 					<div class="box grow min0">
 						<text class="text-sm text-primary truncate">{p.name}</text>
@@ -295,7 +295,7 @@
 			<!-- svelte-ignore a11y_click_events_have_key_events -->
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
 			<div
-				class="nav-section row ycenter gap-sm"
+				class="wb-row-item row ycenter gap-sm"
 				hitbox="self"
 				testId={`${testId}-custom`}
 				onclick={() => {
@@ -321,7 +321,7 @@
 			{#each subRows() as p (p.id)}
 				<!-- svelte-ignore a11y_click_events_have_key_events -->
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
-				<div class="nav-section row ycenter gap-sm" hitbox="self" testId={`${testId}-sub-${p.id}`} onclick={() => openLogin(p.id, p.name, p.loginLabel)}>
+				<div class="wb-row-item row ycenter gap-sm" hitbox="self" testId={`${testId}-sub-${p.id}`} onclick={() => openLogin(p.id, p.name, p.loginLabel)}>
 					<div class="wb-glyph row xcenter ycenter shrink-0"><text class="text-sm text-secondary">{p.name.slice(0, 1).toUpperCase()}</text></div>
 					<div class="box grow min0">
 						<text class="text-sm text-primary truncate">{p.name}</text>

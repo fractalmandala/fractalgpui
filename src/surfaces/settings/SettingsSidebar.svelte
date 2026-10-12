@@ -16,7 +16,7 @@
 		<!-- svelte-ignore a11y_click_events_have_key_events -->
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div
-			class="nav-section row ycenter gap-sm"
+			class="wb-row-item row ycenter gap-sm"
 			class:active={settingsPage.page === p.id}
 			hitbox="self"
 			testId={`set-nav-${p.id}`}

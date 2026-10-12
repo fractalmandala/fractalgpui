@@ -1,5 +1,5 @@
 import type { ConversationId } from '@earendil-works/pi-durable';
-import type { Surface } from '../../kernel/types.ts';
+import type { View } from '../../kernel/types.ts';
 import Agents from './Agents.svelte';
 import PanelSecondary from './PanelSecondary.svelte';
 import SessionList from './SessionList.svelte';
@@ -11,25 +11,23 @@ import { sessionMeta, setSessionArchived } from '../../kernel/pi/sessions.svelte
 import { active, deleteSession, mainChat, newSession, selectSession } from './session.svelte.ts';
 import { requestDelete, requestPanel, requestRename } from './panels.svelte.ts';
 
-// Agents surface: the main area shows the surface's active session tab, the
-// sidebar-left is the session history, the sidebar-panel a second session.
-// Tabs order = recency, surface[0] shown.
-export default {
-	id: 'agents',
-	title: 'Agents',
-	icon: 'bot',
-	description: 'Agent chat sessions',
+// Agents views: the session history, the chat for the active session (its open sessions are
+// tabs inside the view), and a side chat holding a second session.
+const sessions = {
+	id: 'sessions',
+	title: 'Sessions',
+	icon: 'history',
+	description: 'Session history, projects and bots\' sessions',
+	component: SessionList
+} satisfies View;
+
+const chat = {
+	id: 'chat',
+	title: 'Chat',
+	icon: 'message-square',
+	description: 'The active agent session',
 	component: Agents,
 	toolbar: Toolbar,
-	tabs: {
-		list: () => active.surface.map((id) => ({ id, label: sessionMeta(id)?.title ?? 'Session' })),
-		value: () => active.surface[0] ?? '',
-		select: (id: string) => {
-			void selectSession(id);
-		}
-	},
-	sections: { 'sidebar-left': { body: SessionList }, 'sidebar-panel': { body: PanelSecondary } },
-	collapsed: { 'sidebar-panel': false },
 	commands: [
 		{ id: 'agents.stop', title: 'Stop this run', run: () => mainChat().stop() },
 		{ id: 'agents.reset', title: 'Reset this session', run: () => mainChat().reset() },
@@ -58,4 +56,15 @@ export default {
 			}
 		}
 	]
-} satisfies Surface;
+} satisfies View;
+
+const side = {
+	id: 'chat-side',
+	title: 'Side chat',
+	icon: 'bot',
+	description: 'A second session beside the first',
+	component: PanelSecondary
+} satisfies View;
+
+// Order matters: the chat and the sessions list are ⌘1 and ⌘2 (see surfaces/index.ts for the rest).
+export default [chat, sessions, side] satisfies View[];

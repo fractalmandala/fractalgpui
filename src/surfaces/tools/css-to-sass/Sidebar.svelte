@@ -35,7 +35,7 @@
 			{#each history as h, i (h.at + ':' + i)}
 				<!-- svelte-ignore a11y_click_events_have_key_events -->
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
-				<div class="nav-section row ycenter gap-sm" class:active={current === h.css} hitbox="self" testId={`history-${i}`} onclick={() => replace_input(h.css)}>
+				<div class="wb-row-item row ycenter gap-sm" class:active={current === h.css} hitbox="self" testId={`history-${i}`} onclick={() => replace_input(h.css)}>
 					<Icon name="history" tone="secondary" />
 					<text class="nav-section-title truncate">{headline(h.css)}</text>
 					<text class="nav-section-small">{ago(h.at)}</text>

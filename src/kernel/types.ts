@@ -1,7 +1,5 @@
 import type { AnyComponent } from 'gpuix-svelte';
 import type { IconName } from '../ui/icons.ts';
-import type { Tab } from '../ui/types.ts';
-import type { Collapsed, Widths } from './layout.svelte.ts';
 
 /** Something the user can do: from the palette, a keybinding, or a button. */
 export interface Command {
@@ -18,50 +16,23 @@ export interface Command {
 }
 
 /**
- * One workbench surface (tool). Self-contained: its page, state (a `.svelte.ts`
- * module, so it outlives the page and hot reloads) and commands live in
- * `src/surfaces/<id>/`; it reaches the rest of the app only through the kernel. The
- * shell shows a panel only when the surface fills its slot.
+ * One view: an independent feature that can be docked anywhere in the layout tree
+ * (kernel/dock). Self-contained: its component, state (a `.svelte.ts` module, so it
+ * outlives the pane and hot reloads) and commands live in `src/surfaces/<id>/`; it reaches
+ * the rest of the app only through the kernel. A view fills whatever pane it is in, so it
+ * may not assume a size or a neighbour. Each view appears at most once in the layout.
  */
-export interface Surface {
+export interface View {
 	id: string;
 	title: string;
 	icon: IconName;
 	description: string;
-	/** The centre content. */
+	/** The pane's content. */
 	component: AnyComponent;
-	/**
-	 * What the surface puts in the shell's sections (all optional; an unfilled section
-	 * stays an empty container). `sidebar-left` takes a body only: it goes under the
-	 * surface nav, between the shell's own header and footer.
-	 */
-	sections?: {
-		'sidebar-left'?: Pick<SectionSlot, 'body'>;
-		'sidebar-panel'?: SectionSlot;
-		'sidebar-right'?: SectionSlot;
-	};
-	/** Whether sidebar-panel / sidebar-right start collapsed on this surface (default: collapsed). */
-	collapsed?: Collapsed;
-	/**
-	 * Header contract: the main header owns the whole strip — sidebar-left toggle,
-	 * the surface's `tabs` in the dynamic middle, then `toolbar` actions and the
-	 * panel toggles on the right. A surface never renders its own header row.
-	 */
+	/** Actions shown at the right of the pane header while this view is the active tab. */
 	toolbar?: AnyComponent;
-	/** The surface's tabs, shown in the main header's middle; the surface keeps the value in its state. */
-	tabs?: { list: () => Tab[]; value: () => string; select: (id: string) => void };
-	/** Default panel widths until the user resizes them on this surface. */
-	layout?: Widths;
-	/** A pill on the nav item (a count, "new"). */
-	badge?: () => string | number | null;
-	/** Registered while the app runs; grouped under the surface's title. */
+	/** Registered while the app runs; grouped under the view's title. */
 	commands?: Command[];
-	/** Runs once, the first time the surface becomes active (lazy data loading). */
+	/** Runs once, the first time the view is shown (lazy data loading). */
 	load?: () => void | Promise<void>;
-}
-
-/** What a surface may put in a sidebar section: its header row and/or its body. */
-export interface SectionSlot {
-	header?: AnyComponent;
-	body?: AnyComponent;
 }

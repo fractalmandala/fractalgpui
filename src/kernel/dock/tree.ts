@@ -126,10 +126,11 @@ function norm(node: Node): Node | null {
 	const total = kept.reduce((a, k) => a + k.size, 0) || 1;
 	for (const k of kept) {
 		const share = k.size / total;
-		if (k.node.kind === 'split' && k.node.dir === node.dir) {
-			k.node.children.forEach((c, i) => {
+		const inner = k.node;
+		if (inner.kind === 'split' && inner.dir === node.dir) {
+			inner.children.forEach((c, i) => {
 				children.push(c);
-				sizes.push(share * k.node.sizes[i]);
+				sizes.push(share * inner.sizes[i]);
 			});
 		} else {
 			children.push(k.node);

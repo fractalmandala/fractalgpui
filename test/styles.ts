@@ -23,7 +23,7 @@ check('accent is the app green in both modes', [light['theme-color'], dark['them
 check('black text on the accent', dark['on-accent'], '#18181B');
 check('sans font is the installed family', dark['font-sans'], 'General Sans Variable');
 check('app token --font-mono present', dark['font-mono'], 'Menlo');
-check('own classes all translated', ['wb-btn', 'section-sidebar-left', 'section-main-header', 'section-main-footer', 'wb-palette', 'wb-scrim'].every((c) => build.defined.has(c)));
+check('own classes all translated', ['wb-btn', 'wb-shell', 'wb-pane', 'wb-pane-head', 'wb-ptab', 'wb-gutter-row', 'wb-gutter-hit-row', 'wb-dropzones', 'wb-row-item', 'wb-avatar', 'section-main-footer', 'wb-palette', 'wb-scrim'].every((c) => build.defined.has(c)));
 
 // _own.sass sizes go through fractalstyler tokens (assets/token-audit.md): no literal px
 // for these properties, except the documented no-token cases below.
@@ -51,4 +51,18 @@ check('every var() in _own.sass is in the runtime token map (both modes)', missi
 const own_text = build.rules.filter((r) => r.classes.includes('wb-btn') && r.classes.length === 1).map((r) => ('css' in r ? r.css : '')).join(';');
 check('own rules keep token vars live for set_css_vars', /height: var\(--wb-btn-height\)/.test(own_text) && /font-size: var\(--text-sm\)/.test(own_text), true);
 
-finish('styles', 16);
+
+// One radius, a 2px pane gap, and a backdrop darker than the panes (the "islands" look).
+check('default radius is 4px, for panes, controls and cards', [dark['wb-radius'], dark['wb-radius-control'], dark['wb-radius-card'], light['wb-radius']], ['4px', '4px', '4px', '4px']);
+check('panes are 2px apart', [dark['wb-pane-gap'], light['wb-pane-gap']], ['2px', '2px']);
+const lum = (hex: string) => {
+	const n = parseInt(hex.replace('#', ''), 16);
+	return ((n >> 16) & 255) * 0.299 + ((n >> 8) & 255) * 0.587 + (n & 255) * 0.114;
+};
+check('dark: the backdrop is darker than a pane', lum(dark['wb-shell-bg']) < lum(dark['bg-surface']), true);
+check('light: the backdrop is darker than a pane', lum(light['wb-shell-bg']) < lum(light['bg-surface']), true);
+check('icons are 16px', dark['wb-icon-sm'], '16px');
+// No raw radius literal in the app's own rules: every radius reads a token.
+check('_own.sass: every border-radius reads a token', own.split('\n').filter((l) => /border(-\w+)*-radius:/.test(l) && !/var\(--/.test(l)), []);
+
+finish('styles', 22);
