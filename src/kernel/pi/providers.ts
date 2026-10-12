@@ -54,10 +54,16 @@ export const keyEnvFor = (providerId: string): string | null => KEY_ENV[provider
 const ownEnv = new Map<string, string>();
 export const markOwnEnv = (name: string, value: string | undefined) => (value === undefined ? ownEnv.delete(name) : void ownEnv.set(name, value));
 
+/**
+ * Variables never used as a key (ported from pibots env-policy): ANTHROPIC_AUTH_TOKEN is a bearer token for an
+ * Anthropic-compatible PROXY; sending it to api.anthropic.com would hand it to a host it was not issued for.
+ */
+export const BLOCKED_ENV: ReadonlySet<string> = new Set(['ANTHROPIC_AUTH_TOKEN']);
+
 /** The variable when it currently holds a key the USER put there, else undefined. */
 export function envKeyFor(providerId: string): string | undefined {
 	const name = keyEnvFor(providerId);
-	if (!name) return undefined;
+	if (!name || BLOCKED_ENV.has(name)) return undefined;
 	const v = (process.env[name] ?? '').trim();
 	if (!v) return undefined;
 	return ownEnv.get(name) === v ? undefined : name;

@@ -21,6 +21,7 @@ import { botPaths, ensureBotFolders } from './paths.ts';
 import { cleanCharacterPatch, renderCapabilities, renderCharacter, renderIdentity } from './personality.ts';
 import { propose, removeEntry, renderProfile, setEntry } from './profile.ts';
 import { catalogDirs, loadPlugins, loadRoles, renderRoles, renderSkills } from './catalog.ts';
+import { listDir, searchFiles } from '../fs-tools.ts';
 import { llmSummarizer, MemoryManager, type Summarize } from './memory.ts';
 
 /**
@@ -319,10 +320,39 @@ const skillRead = defineTool({
 	}
 });
 
+const listDirTool = defineTool({
+	name: 'list_dir',
+	description: 'List a directory anywhere on the local drive (name, type, size; max 200 entries). Paths are absolute or ~-relative.',
+	replay: 'safe',
+	parameters: Type.Object({ path: Type.String() }),
+	execute: async (a) => {
+		try {
+			return text(await listDir((a as { path: string }).path));
+		} catch (e) {
+			return text((e as Error).message, true);
+		}
+	}
+});
+
+const searchFilesTool = defineTool({
+	name: 'search_files',
+	description: 'Search file contents under a folder (absolute or ~ path) for a regex; skips node_modules/.git/target. Max 100 matches, files up to 1MB.',
+	replay: 'safe',
+	parameters: Type.Object({ pattern: Type.String(), path: Type.String(), ignoreCase: Type.Optional(Type.Boolean()) }),
+	execute: async (a) => {
+		const { pattern, path, ignoreCase } = a as { pattern: string; path: string; ignoreCase?: boolean };
+		try {
+			return text(await searchFiles(pattern, path, ignoreCase));
+		} catch (e) {
+			return text((e as Error).message, true);
+		}
+	}
+});
+
 export const botTools = defineExtension({
 	name: BOT_EXTENSION,
 	sections: secs,
-	tools: [characterEdit, profileUpdate, memoryZoom, memoryDate, skillRead]
+	tools: [characterEdit, profileUpdate, memoryZoom, memoryDate, skillRead, listDirTool, searchFilesTool]
 });
 
 /**
