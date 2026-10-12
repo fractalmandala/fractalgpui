@@ -7,6 +7,7 @@ import {
 	ensureIndex as ioEnsure,
 	forkSession as ioFork,
 	moveSession as ioMove,
+	assignSessionToBot as ioAssign,
 	removeProject as ioRemoveProject,
 	removeSession as ioRemove,
 	renameProject as ioRenameProject,
@@ -59,6 +60,9 @@ async function harness(): Promise<Harness> {
 	return openHarness();
 }
 
+/** The open harness, for the bot store (create / save / delete take it directly). */
+export const sessionHarness = harness;
+
 export const ensureSessions = () => harness().then(() => {});
 
 export const sessionMeta = (id: ConversationId | string) => index.sessions[String(id)];
@@ -90,6 +94,11 @@ export async function setSessionArchived(id: ConversationId, archived: boolean):
 
 export async function moveSession(id: ConversationId, projectId: string | null): Promise<void> {
 	await ioMove(await harness(), id, projectId);
+}
+
+/** Move a session to a bot (or `null`: back to a plain session). */
+export async function assignSession(id: ConversationId, botId: string | null): Promise<void> {
+	await ioAssign(await harness(), id, botId);
 }
 
 export async function touchSession(id: ConversationId): Promise<void> {

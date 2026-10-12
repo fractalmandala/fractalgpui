@@ -6,7 +6,7 @@ import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
 import { Harness, MemoryStorage, createRegistry, type Harness as HarnessType } from '@earendil-works/pi-durable';
 import { createModels } from '@earendil-works/pi-ai/models';
 import { SessionsDoc } from '../metadata.ts';
-import { createSession, ensureIndex } from '../sessions-io.ts';
+import { assignSessionToBot, createSession, ensureIndex } from '../sessions-io.ts';
 import { DEFAULT_EXTENSIONS, installAgentTools, installBotTools } from '../tools.ts';
 import { avatarFallback, BOT_SCHEMA_VERSION, BotsDoc, diffValues, newBotId, slugify, upgradeBot, validateBot } from './meta.ts';
 import { botPaths } from './paths.ts';
@@ -261,5 +261,37 @@ describe('sessions without a bot', () => {
 		expect(agent?.extensions.map((e) => e.name)).toContain("fractal-tools");
 		expect(agent?.extensions.map((e) => e.name)).not.toContain("fractal-bot");
 		await expect(createSession(h, null, FAUX, { botId: 'bot_missing' })).rejects.toThrow(/No such bot/);
+	});
+});
+
+describe('move to bot', () => {
+	const names = async (h: HarnessType, id: Parameters<HarnessType['conversation']>[0]) =>
+		(await (await h.conversation(id, ctx()))!.agent(ctx()))?.extensions.map((e) => e.name) ?? [];
+
+	test('a detached session can be given to another bot, and back to plain', async () => {
+		const h = await open();
+		const a = await createBot(h, { name: 'First' }, o);
+		const b = await createBot(h, { name: 'Second' }, o);
+		const s = await createSession(h, null, FAUX, { botId: a });
+		await deleteBot(h, a, o);
+		const meta = () => h.snapshot(SessionsDoc, ctx()).then((d) => d!.sessions[String(s)]!);
+		expect('botId' in (await meta())).toBe(false);
+		expect(await names(h, s)).not.toContain('fractal-bot');
+
+		await assignSessionToBot(h, s, b);
+		expect((await meta()).botId).toBe(b);
+		expect(await names(h, s)).toContain('fractal-bot');
+
+		await assignSessionToBot(h, s, null);
+		expect('botId' in (await meta())).toBe(false);
+		expect(await names(h, s)).not.toContain('fractal-bot');
+	});
+	test('refuses a missing bot or session and changes nothing', async () => {
+		const h = await open();
+		const s = await createSession(h, null, FAUX);
+		await expect(assignSessionToBot(h, s, 'bot_nonexistent')).rejects.toThrow(/No such bot/);
+		const b = await createBot(h, { name: 'Real' }, o);
+		await expect(assignSessionToBot(h, 999999 as never, b)).rejects.toThrow(/No such session/);
+		expect('botId' in (await h.snapshot(SessionsDoc, ctx()))!.sessions[String(s)]!).toBe(false);
 	});
 });

@@ -21,7 +21,7 @@ import {
 } from './metadata.ts';
 import { projectEntries } from './project.ts';
 import { BotsDoc } from './bots/meta.ts';
-import { botTools } from './bots/extension.ts';
+import { botExtensionOff, botTools } from './bots/extension.ts';
 import { DEFAULT_EXTENSIONS } from './tools.ts';
 
 const ctx = () => BACKGROUND_CONTEXT;
@@ -169,6 +169,27 @@ export async function createSession(
 		};
 	}, ctx());
 	return conv.id;
+}
+
+/**
+ * "Move to bot": give a session (usually a detached one) to `botId`, or return it to a plain session with
+ * `null`. The session keeps its transcript, project and folder; the bot's identity, profile, memory and tools
+ * apply from the next turn. The bot must exist.
+ */
+export async function assignSessionToBot(h: Harness, id: ConversationId, botId: string | null): Promise<void> {
+	if (botId && !(await h.snapshot(BotsDoc, ctx()))?.bots[botId]) throw new Error(`No such bot: ${botId}`);
+	await h.commit(async (tx) => {
+		const d: Draft<SessionsIndex> = await tx.doc(SessionsDoc);
+		const cur = d.sessions[key(id)];
+		if (!cur) throw new Error(`No such session: ${id}`);
+		const next = clone(cur);
+		if (botId) next.botId = botId;
+		else delete next.botId;
+		d.sessions[key(id)] = next;
+	}, ctx());
+	if (!botId) return botExtensionOff(h, id);
+	const conv = await h.conversation(id, ctx());
+	if (conv) await conv.configure({ extensions: [botTools, ...DEFAULT_EXTENSIONS] }, ctx());
 }
 
 /**

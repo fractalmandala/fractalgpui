@@ -1,11 +1,11 @@
 import '../../../test/harness.ts';
-import { check, click_test_id, find, find_test_id, finish, focus, mount_headless, painted, press, settle, type } from 'gpuix-svelte/test';
+import { bounds, check, click_test_id, find_text, find, find_test_id, finish, focus, mount_headless, painted, press, settle, type } from 'gpuix-svelte/test';
 import { mkdtempSync, mkdirSync, rmSync, existsSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { load_styles } from '../../../build/styles.ts';
 import App from '../../App.svelte';
-import { switch_to } from '../../kernel/settings.svelte.ts';
+import { open_view } from '../../kernel/dock/dock.svelte.ts';
 import { run } from '../../kernel/commands.svelte.ts';
 import { last_copied } from '../../kernel/clipboard.ts';
 import { last_revealed } from '../../kernel/reveal.ts';
@@ -31,7 +31,6 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const ptid = (s: string) => s.replace(/[^a-zA-Z0-9]/g, '-');
 
 load_styles();
-switch_to('agents');
 mount_headless(App, { width: 1400, height: 860 });
 settle();
 
@@ -266,6 +265,15 @@ click_test_id(`hist-session-${b.key}`, { button: 2 });
 click_test_id(`hist-session-${b.key}-menu-archive`);
 check('unarchive restores the row', await title_is(b.key, sessionMeta(b.key)?.title ?? ''), true);
 
+// Regression: rows used to collapse to a dot with no name. Every row must paint a readable title.
+for (const key of [a.key, b.key]) {
+	const title = sessionMeta(key)?.title ?? '';
+	const t = title ? find_text(title) : null;
+	check(`the row of ${key.slice(0, 6)} paints its title`, !!t && (bounds(t)?.[2] ?? 0) > 40, true);
+	const row = bounds(find_test_id(`hist-session-${key}`)!);
+	check(`the row of ${key.slice(0, 6)} is wide enough to read`, (row?.[2] ?? 0) > 120, true);
+}
+
 // The panel holds a different session and refuses the surface one (D5)
 const peer = await panelChat();
 check('the panel holds a second session', peer.key !== mainChat().key, true);
@@ -415,7 +423,7 @@ click_test_id('set-provider-custom-acme-menu-remove');
 check('remove drops the row', await ui_is('set-provider-custom-acme', false), true);
 
 // Transcript copy carries the shown session's exchange as text
-switch_to('agents');
+open_view('chat');
 await selectSession(a.key);
 check('copy carries the transcript', run('transcript.copy') && (last_copied() ?? '').includes('Healed.'), true);
 
@@ -438,4 +446,4 @@ check('opening a missing session throws', threw.includes('unknown session'), tru
 rmSync(projDir, { recursive: true, force: true });
 rmSync(pickRoot, { recursive: true, force: true });
 rmSync(pickRoot2, { recursive: true, force: true });
-finish('agents', 87);
+finish('agents', 91);

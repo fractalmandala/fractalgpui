@@ -31,7 +31,9 @@
 	} from './session.svelte.ts';
 	import {
 		addProject,
+		assignSession,
 		createSession,
+		botIndex,
 		index,
 		moveSession,
 		removeProject,
@@ -100,6 +102,7 @@
 
 	let menu = $state<{ kind: 'session' | 'project'; id: string } | null>(null);
 	let moveFor = $state<string | null>(null);
+	let botFor = $state<string | null>(null);
 	let editing = $state<{ kind: 'session' | 'project'; id: string } | null>(null);
 	let draft = $state('');
 	let confirming = $state<{ kind: 'session' | 'project'; id: string } | null>(null);
@@ -112,6 +115,7 @@
 	const closeMenu = () => {
 		menu = null;
 		moveFor = null;
+		botFor = null;
 	};
 
 	function sessionItems(id: string): MenuItem[] {
@@ -124,11 +128,21 @@
 				{ id: 'move:', label: 'Sessions (no project)', icon: 'house' as const }
 			];
 		}
+		if (botFor === id) {
+			return [
+				{ id: 'back', label: 'Back', icon: 'chevron-right' },
+				...Object.entries(botIndex.bots)
+					.filter(([, b]) => !b.archived)
+					.map(([bid, b]) => ({ id: `bot:${bid}`, label: b.identity.name, icon: 'bot' as const, checked: meta.botId === bid })),
+				{ id: 'bot:', label: 'No bot (plain session)', icon: 'house' as const, checked: !meta.botId }
+			];
+		}
 		return [
 			{ id: 'rename', label: 'Rename', icon: 'pencil' },
 			{ id: 'pin', label: meta.pinned ? 'Unpin' : 'Pin', icon: 'pin' },
 			{ id: 'archive', label: meta.archived ? 'Unarchive' : 'Archive', icon: 'archive' },
 			{ id: 'move', label: 'Move to', icon: 'folder' },
+			{ id: 'bot', label: 'Move to bot', icon: 'bot' },
 			{ id: 'branch', label: 'Branch from here', icon: 'git-fork' },
 			{ id: 'copy-id', label: 'Copy session ID', icon: 'copy' },
 			{ id: 'copy-path', label: 'Copy store path', icon: 'copy' },
@@ -153,7 +167,10 @@
 		const meta = sessionMeta(id);
 		if (!meta) return closeMenu();
 		try {
-			if (item === 'back') moveFor = null;
+			if (item === 'back') {
+				moveFor = null;
+				botFor = null;
+			}
 			else if (item === 'rename') {
 				draft = meta.title;
 				editing = { kind: 'session', id };
@@ -165,7 +182,13 @@
 				await setSessionArchived(Number(id), !meta.archived);
 				closeMenu();
 			} else if (item === 'move') moveFor = id;
-			else if (item.startsWith('move:')) {
+			else if (item === 'bot') botFor = id;
+			else if (item.startsWith('bot:')) {
+				const target = item.slice(4) || null;
+				await assignSession(Number(id), target);
+				flash(target ? `Moved to ${botIndex.bots[target]?.identity.name ?? 'the bot'}` : 'Now a plain session', 'success');
+				closeMenu();
+			} else if (item.startsWith('move:')) {
 				await moveSession(Number(id), item.slice(5) || null);
 				closeMenu();
 			} else if (item === 'branch') {
@@ -304,9 +327,9 @@
 			</div>
 			{#each strays() as v (v.id)}
 				<div
-					class="nav-section row ycenter gap-sm"
+					class="wb-row-item row ycenter gap-sm"
 					class:active={active.surface[0] === v.id}
-					class:wb-drop={dropTarget === '' && dragging !== null}
+					class:wb-drop-on={dropTarget === '' && dragging !== null}
 					hitbox="self"
 					testId={`hist-session-${v.id}`}
 					onclick={() => void selectSession(v.id)}
@@ -321,6 +344,7 @@
 					{#if isOpen(v.id)}<text class="text-sm text-secondary">○</text>{/if}
 					{#if isBusy(v.id)}<div class="wb-live-dot"></div>{/if}
 					<text class="nav-section-title grow min0 truncate">{v.meta.title}</text>
+					{#if v.meta.botId}<text class="nav-section-small shrink-0 truncate" testId={`hist-session-${v.id}-bot`}>{botIndex.bots[v.meta.botId]?.identity.name ?? ""}</text>{/if}
 					<IconButton
 						icon="more-horizontal"
 						testId={`hist-session-${v.id}-more`}
@@ -367,8 +391,8 @@
 		{#each projects() as p (p.id)}
 			<div class="box gap-xs">
 				<div
-					class="nav-section row ycenter gap-sm"
-					class:wb-drop={dropTarget === p.id && dragging !== null}
+					class="wb-row-item row ycenter gap-sm"
+					class:wb-drop-on={dropTarget === p.id && dragging !== null}
 					hitbox="self"
 					testId={`hist-project-${tid(p.id)}`}
 					onclick={() => setCollapsed(p.id, !isCollapsed(p.id))}
@@ -430,7 +454,7 @@
 						<div class="px-sm"><SectionLabel label={bucket.label} /></div>
 						{#each bucket.views as v (v.id)}
 							<div
-								class="nav-section row ycenter gap-sm"
+								class="wb-row-item row ycenter gap-sm"
 								class:active={active.surface[0] === v.id}
 								hitbox="self"
 								testId={`hist-session-${v.id}`}
@@ -443,6 +467,7 @@
 								{#if isOpen(v.id)}<text class="text-sm text-secondary">○</text>{/if}
 								{#if isBusy(v.id)}<div class="wb-live-dot"></div>{/if}
 								<text class="nav-section-title grow min0 truncate">{v.meta.title}</text>
+					{#if v.meta.botId}<text class="nav-section-small shrink-0 truncate" testId={`hist-session-${v.id}-bot`}>{botIndex.bots[v.meta.botId]?.identity.name ?? ""}</text>{/if}
 								<IconButton
 									icon="more-horizontal"
 									testId={`hist-session-${v.id}-more`}
@@ -508,7 +533,7 @@
 	{#if archivedSessions().length || archivedProjects().length}
 		<div class="box gap-xs">
 			<div
-				class="nav-section row ycenter gap-sm"
+				class="wb-row-item row ycenter gap-sm"
 				hitbox="self"
 				testId="hist-archived"
 				onclick={() => (sidebarUi.showArchived = !sidebarUi.showArchived)}
@@ -520,7 +545,7 @@
 			{#if sidebarUi.showArchived}
 				{#each archivedProjects() as p (p.id)}
 					<div
-						class="nav-section row ycenter gap-sm"
+						class="wb-row-item row ycenter gap-sm"
 						hitbox="self"
 						testId={`hist-project-${tid(p.id)}`}
 						onclick={() => setCollapsed(p.id, !isCollapsed(p.id))}
@@ -549,7 +574,7 @@
 					{#if !isCollapsed(p.id)}
 						{#each inProject(p.id) as v (v.id)}
 							<div
-								class="nav-section row ycenter gap-sm"
+								class="wb-row-item row ycenter gap-sm"
 								hitbox="self"
 								testId={`hist-session-${v.id}`}
 								onclick={() => void selectSession(v.id)}
@@ -558,6 +583,7 @@
 								}}
 							>
 								<text class="nav-section-title grow min0 truncate">{v.meta.title}</text>
+					{#if v.meta.botId}<text class="nav-section-small shrink-0 truncate" testId={`hist-session-${v.id}-bot`}>{botIndex.bots[v.meta.botId]?.identity.name ?? ""}</text>{/if}
 								<IconButton
 									icon="more-horizontal"
 									testId={`hist-session-${v.id}-more`}
@@ -578,7 +604,7 @@
 				{/each}
 				{#each archivedSessions() as v (v.id)}
 					<div
-						class="nav-section row ycenter gap-sm"
+						class="wb-row-item row ycenter gap-sm"
 						hitbox="self"
 						testId={`hist-session-${v.id}`}
 						onclick={() => void selectSession(v.id)}
@@ -587,6 +613,7 @@
 						}}
 					>
 						<text class="nav-section-title grow min0 truncate">{v.meta.title}</text>
+					{#if v.meta.botId}<text class="nav-section-small shrink-0 truncate" testId={`hist-session-${v.id}-bot`}>{botIndex.bots[v.meta.botId]?.identity.name ?? ""}</text>{/if}
 						<IconButton
 							icon="more-horizontal"
 							testId={`hist-session-${v.id}-more`}
