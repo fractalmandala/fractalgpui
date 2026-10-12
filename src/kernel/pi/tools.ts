@@ -29,6 +29,7 @@ import { SessionsDoc } from './metadata.ts';
 import { BotsDoc } from './bots/meta.ts';
 import { capabilityFor } from './bots/personality.ts';
 import { auditFor, botTools } from './bots/extension.ts';
+import { BROWSER_TOOLS } from './bots/browser-tools.ts';
 import { classifyDestructive } from './destructive.ts';
 import { capToolResult, preview } from './caps.ts';
 import type { AuditRow } from './audit.ts';
@@ -426,9 +427,22 @@ export function installAgentTools(registry: Registry): void {
 /** The extensions every plain session runs with (the host default once bot tools are installed). */
 export const DEFAULT_EXTENSIONS = [CodingTools, fractalTools];
 
-/** Install the bot extension (identity/profile/memory sections, character/profile/memory tools). Bot sessions select it. */
+/**
+ * The bot's browser tools, each behind the same policy as the file tools: the bot's browser capability,
+ * access modes (navigation and input are changes, reads are not), approvals, audit rows and capped results.
+ */
+export const browserTools = defineExtension({
+	name: 'fractal-browser',
+	tools: BROWSER_TOOLS.map(({ tool, toolClass }) => guardTool(tool, toolClass))
+});
+
+/** What a bot session runs with: bot identity/memory tools, the browser, and the shipped tools. */
+export const BOT_EXTENSIONS = [botTools, browserTools, ...DEFAULT_EXTENSIONS];
+
+/** Install the bot extensions (identity/profile/memory sections and tools; the browser tools). Bot sessions select them. */
 export function installBotTools(registry: Registry): void {
 	registry.install(botTools);
+	registry.install(browserTools);
 }
 /**
  * Record the user's answer on a pending approval (Slice 7: the transcript's

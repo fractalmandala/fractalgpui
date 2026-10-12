@@ -21,8 +21,8 @@ import {
 } from './metadata.ts';
 import { projectEntries } from './project.ts';
 import { BotsDoc } from './bots/meta.ts';
-import { botExtensionOff, botTools } from './bots/extension.ts';
-import { DEFAULT_EXTENSIONS } from './tools.ts';
+import { botExtensionOff } from './bots/extension.ts';
+import { BOT_EXTENSIONS } from './tools.ts';
 
 const ctx = () => BACKGROUND_CONTEXT;
 const key = (id: ConversationId) => String(id);
@@ -153,7 +153,7 @@ export async function createSession(
 	const conv = await h.createConversation(
 		{
 			ownership: { kind: 'ownerless' },
-			agent: { model, ...(bot ? { extensions: [botTools, ...DEFAULT_EXTENSIONS] } : {}), ...(cwd ? { cwd } : {}) }
+			agent: { model, ...(bot ? { extensions: BOT_EXTENSIONS } : {}), ...(cwd ? { cwd } : {}) }
 		},
 		ctx()
 	);
@@ -189,7 +189,7 @@ export async function assignSessionToBot(h: Harness, id: ConversationId, botId: 
 	}, ctx());
 	if (!botId) return botExtensionOff(h, id);
 	const conv = await h.conversation(id, ctx());
-	if (conv) await conv.configure({ extensions: [botTools, ...DEFAULT_EXTENSIONS] }, ctx());
+	if (conv) await conv.configure({ extensions: BOT_EXTENSIONS }, ctx());
 }
 
 /**
