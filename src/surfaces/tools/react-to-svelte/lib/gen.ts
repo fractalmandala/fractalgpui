@@ -26,11 +26,11 @@ function detached(node: t.Node): t.Node {
 }
 
 /** Multi-line, for script statements. */
-export const gen = (node: t.Node): string => generate(detached(node), { jsescOption: { minimal: true } }).code;
+export const gen = (node: t.Node): string => generate(detached(node), { jsescOption: { minimal: true, quotes: 'single' } }).code;
 
 /** One line, for template expressions and attribute values. */
 export const gen_inline = (node: t.Node): string =>
-	generate(detached(node), { concise: true, jsescOption: { minimal: true } })
+	generate(detached(node), { concise: true, jsescOption: { minimal: true, quotes: 'single' } })
 		.code.replace(/;\s*$/, '')
 		.trim();
 

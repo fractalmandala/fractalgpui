@@ -292,7 +292,7 @@ describe('components', () => {
 		expect(await render(r, { xs: [] })).toBe('<p>none</p>');
 	});
 	test('relative default imports used as components point at .svelte', () => {
-		expect(main(SAMPLES[5].source)).toContain('import Avatar from "./Avatar.svelte";');
+		expect(main(SAMPLES[5].source)).toContain("import Avatar from './Avatar.svelte';");
 	});
 	test('named component imports are flagged', () => {
 		expect(svelte(`import { Select } from './Select';\nexport default function A() { return <Select />; }`).warnings.join()).toContain('named import');

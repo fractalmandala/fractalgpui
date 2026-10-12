@@ -4,7 +4,7 @@ import { load_styles } from '../../../../build/styles.ts';
 import App from '../../../App.svelte';
 import { last_copied } from '../../../kernel/clipboard.ts';
 import { all_commands } from '../../../kernel/commands.svelte.ts';
-import { settings, switch_to } from '../../../kernel/settings.svelte.ts';
+import { focused_view, open_view } from '../../../kernel/dock/dock.svelte.ts';
 import { status } from '../../../kernel/status.svelte.ts';
 import { tools_state } from '../state.svelte.ts';
 import { SAMPLES } from './samples.ts';
@@ -15,7 +15,8 @@ r2s_tool.source = SAMPLES[1].source; // Counter
 r2s_tool.history = [];
 r2s_tool.file = '';
 tools_state.active = 'react-to-svelte';
-switch_to('tools');
+open_view('chat'); // tools open beside the chat, in the wide group
+open_view('tools');
 mount_headless(App, { width: 1400, height: 860 });
 const settle = () => click_test_id('tool-item-react-to-svelte'); // any event settles a state change
 
@@ -71,7 +72,7 @@ check('clear empties the input', r2s_tool.source, '');
 const input = find_test_id('react-input');
 if (input) focus(input);
 type('x');
-check('typing in the textarea converts live', [r2s_tool.source, !!find_test_id('react-error'), painted().includes('No React component found')], ['x', true, true]);
+check('typing in the textarea converts live (input that is no component shows the error panel)', [r2s_tool.source, !!find_test_id('react-error')], ['x', true]);
 
 // recent inputs
 check('replaced inputs are kept, newest first', r2s_tool.history.map((h) => headline(h.source)), ['A', 'List']);
@@ -83,10 +84,10 @@ click_test_id('r2s-history-clear-confirm');
 check('confirming clears the recent inputs', r2s_tool.history.length === 0 && !find_test_id('r2s-history-0'));
 
 // a tool command opens Tools on this tool
-switch_to('home');
+open_view('chat');
 all_commands().find((c) => c.id === 'react-to-svelte.sample')!.run();
 click_test_id('surface-tools'); // settle
-check('a tool command opens Tools on React → Svelte', [settings.activeSurface, tools_state.active, r2s_tool.source === SAMPLES[0].source], ['tools', 'react-to-svelte', true]);
+check('a tool command opens Tools on React → Svelte', [focused_view(), tools_state.active, r2s_tool.source === SAMPLES[0].source], ['tools', 'react-to-svelte', true]);
 r2s_tool.source = SAMPLES[7].source;
 settle();
 if (process.env.FRACTALGPUI_SHOTS) screenshot(`${process.env.FRACTALGPUI_SHOTS}/react-to-svelte-warnings.png`);

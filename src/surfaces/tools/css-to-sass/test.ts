@@ -4,7 +4,7 @@ import { load_styles } from '../../../../build/styles.ts';
 import App from '../../../App.svelte';
 import { last_copied } from '../../../kernel/clipboard.ts';
 import { all_commands } from '../../../kernel/commands.svelte.ts';
-import { settings, switch_to } from '../../../kernel/settings.svelte.ts';
+import { focused_view, open_view } from '../../../kernel/dock/dock.svelte.ts';
 import { status } from '../../../kernel/status.svelte.ts';
 import { convert, css_tool, detect_syntax, history_of, headline, SAMPLE, SAMPLES, SASS_SAMPLE } from './state.svelte.ts';
 
@@ -17,7 +17,8 @@ css_tool.direction = 'css-to-sass';
 css_tool.sass = SASS_SAMPLE;
 css_tool.syntax = 'auto';
 css_tool.style = 'expanded';
-switch_to('tools');
+open_view('chat'); // tools open beside the chat, in the wide group
+open_view('tools');
 mount_headless(App, { width: 1400, height: 640 }); // tall enough for the tool list plus every sample and recent row
 
 check('page mounts', !!find_test_id('css-input') && !!find_test_id('sass-output'));
@@ -83,14 +84,14 @@ check('confirming clears the recent inputs', css_tool.history.length === 0 && !f
 
 // hosted by the Tools surface
 check('the tool list sits above the tool\'s own sidebar', !!find_test_id('tool-list') && !!find_test_id('tool-item-css-to-sass'));
-switch_to('home');
+open_view('chat');
 all_commands().find((c) => c.id === 'css-to-sass.diff')!.run();
 click_test_id('surface-tools'); // settle
-check('a tool command opens Tools on that tool', [settings.activeSurface, css_tool.tab, !!find_test_id('diff-view')], ['tools', 'diff', true]);
+check('a tool command opens Tools on that tool', [focused_view(), css_tool.tab, !!find_test_id('diff-view')], ['tools', 'diff', true]);
 
 // Sass → CSS
 const settle = () => click_test_id('tool-item-css-to-sass');
-switch_to('tools');
+open_view('tools');
 settle();
 click_test_id('opt-direction-sass-to-css');
 check('direction toggle switches to Sass → CSS', [css_tool.direction, !!find_test_id('sass-input'), !find_test_id('css-input')], ['sass-to-css', true, true]);

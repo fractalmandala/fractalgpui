@@ -252,8 +252,14 @@ function discover(ast: t.File): Discovery {
 	if (default_name) for (const c of d.components) if (c.name === default_name) c.is_default = true;
 	// an anonymous default export that came through unwrap_component without forwardRef
 	for (const c of d.components) if (c.is_default && t.isExportDefaultDeclaration(c.top) && !t.isFunctionDeclaration(c.top.declaration)) {
-		const inner = unwrap(c.top.declaration as t.Node);
-		c.forward_ref = t.isCallExpression(inner) && JSON.stringify(gen_inline(inner.callee)).includes('forwardRef');
+		// memo(forwardRef(fn)): walk the wrappers; any forwardRef in the chain counts.
+		let inner = unwrap(c.top.declaration as t.Node);
+		let forwards = false;
+		while (t.isCallExpression(inner)) {
+			if (callee_name(inner.callee) === 'forwardRef') forwards = true;
+			inner = unwrap(inner.arguments[0] as t.Node);
+		}
+		c.forward_ref = forwards;
 	}
 	return d;
 }
@@ -790,7 +796,7 @@ function convert_component(c: Found, fc: FileCtx, analysis: ReturnType<typeof an
 	}
 
 	// 4. the template: the early-return chain, then the final return
-	const jsx: JsxCtx = { warnings, snippets, optional, dom_refs, component_refs, ref_names: new Set(refs.keys()), provides: [], styled: fc.styled, props_id: props.props_id };
+	const jsx: JsxCtx = { warnings, snippets, optional, dom_refs, component_refs, ref_names: new Set([...refs.keys(), ...(props.ref_local ? [props.ref_local] : [])]), provides: [], styled: fc.styled, props_id: props.props_id };
 	for (const s of local_snippets) optional.delete(s.name);
 	branches.push({ test: null, body: final });
 	const template = blocks(branches, jsx, '').replace(/\n{3,}/g, '\n\n');
