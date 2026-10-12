@@ -1,0 +1,21 @@
+// Probe: Playwright persistent context under the current runtime. Usage: <runtime> probe.ts [headed|headless]
+import { chromium } from "playwright";
+import { mkdtempSync, writeFileSync, statSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+const headless = process.argv[2] !== "headed";
+const dir = mkdtempSync(join(tmpdir(), "pwprobe-"));
+const html = join(dir, "p.html");
+writeFileSync(html, "<title>hi</title><h1>Hello pibots</h1><p>second</p>");
+const t0 = Date.now();
+const ctx = await chromium.launchPersistentContext(join(dir, "profile"), { headless });
+const t1 = Date.now();
+const page = ctx.pages()[0] ?? (await ctx.newPage());
+await page.goto("file://" + html);
+const text = await page.innerText("body");
+const shot = join(dir, "s.png");
+await page.screenshot({ path: shot });
+const ev = await page.evaluate(() => 1 + 1);
+await ctx.close();
+console.log(JSON.stringify({ runtime: typeof Bun !== "undefined" ? "bun " + Bun.version : "node " + process.version, headless, launchMs: t1 - t0, totalMs: Date.now() - t0, title: await Promise.resolve("hi"), text, evalResult: ev, shotBytes: statSync(shot).size }));
+process.exit(0);
