@@ -111,8 +111,13 @@ conversations, indexed by a session-scoped doc. Merge design:
    Needs an `Image`-from-path primitive check in gpuix-svelte (probe first; fallback = status + "open frame" button).
 5. **Models & usage policies**: kept-models-only list, env-detected providers shown ignorable, never use proxy
    env (`BLOCKED_ENV`), usage windows (anthropic/x-ratelimit headers, OpenRouter `/key`) in `UsagePopover.svelte`.
-6. **Roles & plugins**: roles catalog / in-use lists in the Bot editor; Agent Plugins loading
-   (registry extension discovery from a plugins dir, each plugin listed with enable toggle). Scope to be set after Stage 3.
+6. **Roles & plugins — DONE.** `kernel/pi/bots/catalog.ts`. Roles = SKILL.md-style files in `<data>/roles`
+   (`<id>/SKILL.md` or `<id>.md`; folder configurable via `<data>/catalog.json`, "Change folder" in the editor); no
+   shipped templates. A bot holds role ids; their bodies go into the `bot-roles` prompt section. Plugins = Agent
+   Plugins 1.0.0 dirs in `<data>/plugins` (`plugin.json`, `skills/*/SKILL.md`, `mcp.json`), enabled per bot
+   (`BotMeta.plugins`); enabled skills are listed in a `bot-skills` section and loaded with the `skill_read` tool.
+   Gaps: MCP servers are listed only (pi-durable/pi-ai have no MCP client); no `${PLUGIN_ROOT}`-style expansion,
+   no 1.1.0 draft features, no client-namespace extensions, no JSON-schema validation beyond `$schema`/`name`.
 7. **Retire pibots Rust UI**: archive notice in pibots repo README; keep `.dmg` flow (`build/dmg.ts`) – verify Playwright
    and its browsers are not bundled (see caveats); delete nothing in this repo.
 
