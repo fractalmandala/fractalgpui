@@ -1,0 +1,39 @@
+diff --git a/packages/native/src/renderer.rs b/packages/native/src/renderer.rs
+index d66ab63..ecb5b56 100644
+--- a/packages/native/src/renderer.rs
++++ b/packages/native/src/renderer.rs
+@@ -1458,6 +1458,24 @@ impl GpuixRenderer {
+         ))
+     }
+ 
++    /// fractalgpui patch: begin an AppKit window drag from the current left mouse-down.
++    #[napi]
++    pub fn start_window_move(&self) -> Result<()> {
++        #[cfg(target_os = "macos")]
++        return update_window(|_view, window, _cx| window.start_window_move());
++        #[cfg(not(target_os = "macos"))]
++        Ok(())
++    }
++
++    /// fractalgpui patch: the system titlebar double-click action (zoom/minimize per macOS setting).
++    #[napi]
++    pub fn titlebar_double_click(&self) -> Result<()> {
++        #[cfg(target_os = "macos")]
++        return update_window(|_view, window, _cx| window.titlebar_double_click());
++        #[cfg(not(target_os = "macos"))]
++        Ok(())
++    }
++
+     #[napi]
+     pub fn set_window_title(&self, title: String) -> Result<()> {
+         #[cfg(target_os = "macos")]
+@@ -5549,6 +5567,9 @@ fn to_gpui_window_options(
+             appears_transparent: titlebar_transparent,
+             traffic_light_position,
+         }),
++        // fractalgpui patch: a taken-over titlebar is app-owned, so AppKit stops dragging
++        // from the hidden native bar; the app calls startWindowMove/titlebarDoubleClick.
++        app_owns_titlebar_drag: titlebar_transparent,
+         is_resizable: options.resizable.unwrap_or(true),
+         window_background,
+         window_min_size,

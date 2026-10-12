@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { on_window_key } from 'gpuix-svelte';
+	import { on_window_key, window_drag } from 'gpuix-svelte';
 	import { close_palette, handle_key, move_selection, palette } from '../kernel/commands.svelte.ts';
 	import { cancel_drag, ui } from '../kernel/dock/dock.svelte.ts';
 	import { install } from '../kernel/views.svelte.ts';
@@ -12,7 +12,9 @@
 	// The shell: an 80px left strip (macOS traffic lights at its top), a transparent 32px
 	// title strip across the top (the window's own title bar is taken over, see
 	// kernel/chrome.ts), and the dock on a dark backdrop. Panes are islands: the backdrop
-	// shows in the 2px gaps (see `.wb-shell`). No footer / status bar.
+	// shows in the 2px gaps (see `.wb-shell`). No footer / status bar. Both strips are the
+	// window's drag region (the native bar no longer drags): `window_drag` moves the window
+	// on a press and runs the macOS double-click action, skipping interactive children.
 	// A tab released anywhere that is not a drop zone cancels the drag (deferred, so a drop
 	// handler that runs in the same event still sees the drag).
 	function released() {
@@ -37,9 +39,9 @@
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="wb-shell box full sans text-primary" testId="shell" onmouseup={released}>
 	<div class="row grow min0" testId="shell-body">
-		<div class="wb-sidebar-strip" testId="sidebar-strip"></div>
+		<div class="wb-sidebar-strip" testId="sidebar-strip" onmousedown={window_drag}></div>
 		<div class="box grow min0">
-			<div class="wb-title-strip row ycenter xbetween" testId="title-strip">
+			<div class="wb-title-strip row ycenter xbetween" testId="title-strip" onmousedown={window_drag}>
 				<div></div>
 				{#if status.message}
 					<text
