@@ -4,6 +4,7 @@ import { openNodeSqliteStorage } from '@earendil-works/pi-durable/storage/sqlite
 import { NodeExecutionEnv } from '@earendil-works/pi-durable/env/node';
 import { join } from 'node:path';
 import { data_dir } from '../paths.ts';
+import { agentDbPath, repairRootConversation } from './sessions-sql.ts';
 import { buildModels, injectStoredKeys, isTestEnv, resolveDefault } from './models.ts';
 import { freshSession, SessionsDoc } from './metadata.ts';
 import { DEFAULT_EXTENSIONS, installAgentTools, installBotTools } from './tools.ts';
@@ -29,6 +30,7 @@ export async function openHarness(): Promise<HarnessType> {
 	if (!opening) {
 		opening = (async () => {
 			injectStoredKeys();
+			if (!isTestEnv()) repairRootConversation(agentDbPath());
 			const storage = isTestEnv() ? new MemoryStorage() : await openNodeSqliteStorage(join(data_dir(), 'pi', 'agent.sqlite'));
 			const registry = createRegistry();
 			installAgentTools(registry);

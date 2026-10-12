@@ -1,5 +1,5 @@
 import { describe, expect, test, afterAll } from 'bun:test';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -45,7 +45,7 @@ import {
 	setSessionPinned,
 	touchSession
 } from './sessions-io.ts';
-import { checkDeleteSchema, deleteConversationRecords } from './sessions-sql.ts';
+import { checkDeleteSchema, deleteConversationRecords, repairRootConversation } from './sessions-sql.ts';
 
 const ctx = () => BACKGROUND_CONTEXT;
 const FAUX = { provider: 'faux', modelId: 'faux-1' };
@@ -331,12 +331,12 @@ async function seedStore(path: string) {
 	const storage = await openNodeSqliteStorage(path);
 	const db = new DatabaseSync(path);
 	const run = (sql: string, ...params: (number | string | null)[]) => db.prepare(sql).run(...params);
-	run(`insert into conversations (id, owner_conversation_id, owner_task_id, record) values (1, null, null, '{}')`);
+	run(`insert into conversations (id, owner_conversation_id, owner_task_id, record) values (3, null, null, '{}')`);
 	run(`insert into conversations (id, owner_conversation_id, owner_task_id, record) values (2, null, null, '{}')`);
-	run(`insert into entries (id, conversation_id, head, commit_seq, record) values (10, 1, null, 1, '{}')`);
+	run(`insert into entries (id, conversation_id, head, commit_seq, record) values (10, 3, null, 1, '{}')`);
 	run(`insert into entries (id, conversation_id, head, commit_seq, record) values (11, 2, null, 1, '{}')`);
 	run(`insert into documents (id, kind, family, key_value, scope_kind, owner_id, created_at, retired_at, record)
-		values (20, 'pi.live', 0, '', 'conversation', 1, 1, null, '{}')`);
+		values (20, 'pi.live', 0, '', 'conversation', 3, 1, null, '{}')`);
 	run(`insert into documents (id, kind, family, key_value, scope_kind, owner_id, created_at, retired_at, record)
 		values (21, 'pi.live', 0, '', 'conversation', 2, 1, null, '{}')`);
 	run(`insert into documents (id, kind, family, key_value, scope_kind, owner_id, created_at, retired_at, record)
@@ -345,10 +345,10 @@ async function seedStore(path: string) {
 	run(`insert into document_revisions (document_id, seq, kind, version, content) values (21, 1, 'base', 1, '{}')`);
 	run(`insert into document_revisions (document_id, seq, kind, version, content) values (22, 1, 'base', 1, '{}')`);
 	run(`insert into tasks (id, conversation_id, kind, status, abort_requested, background, record)
-		values (30, 1, 'run', 'terminal', 0, 0, '{}')`);
+		values (30, 3, 'run', 'terminal', 0, 0, '{}')`);
 	run(`insert into tasks (id, conversation_id, kind, status, abort_requested, background, record)
 		values (31, 2, 'run', 'terminal', 0, 0, '{}')`);
-	run(`insert into submissions (id, conversation_id, request_id, status, record) values (40, 1, null, 'done', '{}')`);
+	run(`insert into submissions (id, conversation_id, request_id, status, record) values (40, 3, null, 'done', '{}')`);
 	run(`insert into submissions (id, conversation_id, request_id, status, record) values (41, 2, null, 'done', '{}')`);
 	db.close();
 	return storage;
@@ -367,7 +367,7 @@ describe('deleteConversationRecords', () => {
 	test('deletes one conversation and keeps the other plus session docs', async () => {
 		const path = join(tmpDir, 'agent.sqlite');
 		await seedStore(path);
-		const counts = deleteConversationRecords(path, 1);
+		const counts = deleteConversationRecords(path, 3);
 		expect(counts).toEqual({ revisions: 1, documents: 1, entries: 1, tasks: 1, submissions: 1, conversations: 1 });
 		const db = new DatabaseSync(path);
 		try {
@@ -378,8 +378,8 @@ describe('deleteConversationRecords', () => {
 			expect(count(db, `select count(*) as n from tasks where conversation_id = 2`)).toBe(1);
 			expect(count(db, `select count(*) as n from submissions where conversation_id = 2`)).toBe(1);
 			expect(count(db, `select count(*) as n from documents where kind = 'fractal.sessions'`)).toBe(1);
-			expect(count(db, `select count(*) as n from conversations where id = 1`)).toBe(0);
-			expect(count(db, `select count(*) as n from entries where conversation_id = 1`)).toBe(0);
+			expect(count(db, `select count(*) as n from conversations where id = 3`)).toBe(0);
+			expect(count(db, `select count(*) as n from entries where conversation_id = 3`)).toBe(0);
 		} finally {
 			db.close();
 		}
@@ -395,5 +395,51 @@ describe('deleteConversationRecords', () => {
 		} finally {
 			db.close();
 		}
+	});
+});
+
+describe('reserved root conversation (regression: "ID 1 already belongs to conversation")', () => {
+	test('deleting the root conversation clears its content but keeps its row', async () => {
+		const path = join(tmpDir, 'root-guard.sqlite');
+		await seedStore(path);
+		const db0 = new DatabaseSync(path);
+		db0.prepare(`insert into conversations (id, owner_conversation_id, owner_task_id, record) values (1, null, null, '{}')`).run();
+		db0.prepare(`insert into entries (id, conversation_id, head, commit_seq, record) values (12, 1, null, 1, '{}')`).run();
+		db0.close();
+		const counts = deleteConversationRecords(path, 1);
+		expect(counts.conversations).toBe(0);
+		expect(counts.entries).toBe(1);
+		const db = new DatabaseSync(path);
+		try {
+			expect(count(db, `select count(*) as n from conversations where id = 1`)).toBe(1);
+			expect(count(db, `select count(*) as n from entries where conversation_id = 1`)).toBe(0);
+		} finally {
+			db.close();
+		}
+	});
+
+	test('a store whose root conversation row was deleted is repaired, backed up, and opens', async () => {
+		const path = join(tmpDir, 'root-broken.sqlite');
+		// Real root bootstrap through the harness, then simulate the old delete bug (rows gone, id still claimed).
+		const s1 = await openNodeSqliteStorage(path);
+		const h1 = await Harness.open(s1, { models: createModels(), registry: createRegistry() }, ctx());
+		await h1.root(ctx());
+		await h1.close(ctx());
+		const raw = new DatabaseSync(path);
+		raw.prepare('delete from conversations where id = 1').run();
+		raw.close();
+
+		expect(repairRootConversation(path)).toBe(true);
+		expect(existsSync(`${path}.pre-root-repair`)).toBe(true);
+		expect(repairRootConversation(path)).toBe(false); // idempotent
+
+		const s2 = await openNodeSqliteStorage(path);
+		const h2 = await Harness.open(s2, { models: createModels(), registry: createRegistry() }, ctx());
+		expect(Number((await h2.root(ctx())).id)).toBe(1);
+		await h2.close(ctx());
+	});
+
+	test('fresh or missing databases are left alone', () => {
+		expect(repairRootConversation(join(tmpDir, 'does-not-exist.sqlite'))).toBe(false);
 	});
 });
