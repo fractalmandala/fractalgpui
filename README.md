@@ -74,7 +74,7 @@ warnings show in the status bar (click for detail, or "Show style diagnostics").
 | `src/styles/` | The design system: `index.sass` composes the `_00_*`…`_09_*` partials (tokens, dimensions, typography, containers, layouts, shells, interactions, visuals, its own). `_own.sass` is the one place for app-only classes. |
 | `test/` | `harness.ts`, `styles.ts` (strict style check), `ui.ts` (primitives), `layout.ts` (panel state), `panels.ts` (collapse, resize), `shell.ts` (nav, Home, keymap, palette, theme, persistence). |
 | `test.ts` | Runs every headless suite in its own process, then `bun test ./src`. |
-| `vendor/` | The custom-renderer Svelte build `gpuix-svelte` requires. |
+| `vendor/svelte/` | Unpacked custom-renderer Svelte 5.57.0 (`ff9658a`) that `gpuix-svelte` requires. |
 
 ## Styling: fractalstyler through an adapter
 
@@ -132,7 +132,7 @@ Rules of the road (fractalstyler's closed world):
 ## Why the dependencies look unusual
 
 - `gpuix-svelte` on npm is only a `0.0.1` placeholder, so it is pinned to a git commit.
-- `gpuix-svelte` only works with a specific unreleased Svelte build (custom renderer API). Normally it ships that inside itself, but a git install does not unpack bundled dependencies, so the same tarball is vendored in `vendor/` and installed as `svelte`. Do not replace it with the registry `svelte`: same version number, none of the API.
+- `gpuix-svelte` only works with a specific unreleased Svelte build (custom renderer API). Normally it ships that inside itself, but a git install does not unpack bundled dependencies, so that build is unpacked under `vendor/svelte/` (Svelte 5.57.0 at commit `ff9658a`) and installed as `"svelte": "file:vendor/svelte"`. Do not replace it with the registry `svelte`: same version number, none of the API.
 - When `gpuix-svelte` is published properly, drop `vendor/` and the `svelte` dependency, and point the `svelte` paths in `tsconfig.json` at `./node_modules/gpuix-svelte/node_modules/svelte`.
 
 ## GPUI limits worth knowing
