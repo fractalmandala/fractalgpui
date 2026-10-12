@@ -62,6 +62,15 @@ for (const s of ['roles', 'capabilities', 'models', 'memory', 'activity', 'json'
 	click_test_id(`be-tabs-${s}`);
 	check(`the ${s} section renders`, !!find_test_id(`sec-${s}`));
 }
+// the workspace folder is chosen with the folder picker in Capabilities (botroom by default)
+click_test_id('be-tabs-capabilities');
+check('capabilities shows the workspace, botroom by default', !!find_test_id('cap-workspace') && painted().includes('(botroom)'), true);
+click_test_id('cap-workspace-choose');
+check('Choose folder opens the folder picker', await until(() => !!find_test_id('cap-picker')), true);
+click_test_id('cap-picker-choose');
+check('choosing puts the folder in the draft (saved with Save)', await until(() => !!editor.draft?.workspace && !find_test_id('cap-picker')), true);
+click_test_id('cap-workspace-reset');
+check('Use botroom clears it again', editor.draft?.workspace, '');
 click_test_id('be-tabs-models');
 click_test_id('mo-choose');
 check('the models section has a separate memory/summary model picker', !!find_test_id('mo-summary') && !!find_test_id('mo-panel'));
@@ -86,4 +95,4 @@ check('a session can be detached', sessionMeta(key)?.botId ?? null, null);
 await assignSession(Number(key) as never, id);
 check('and moved to a bot', sessionMeta(key)?.botId, id);
 
-finish('bots', 23);
+finish('bots', 27);

@@ -55,7 +55,7 @@ async function open(): Promise<HarnessType> {
 async function botSession(over: { name?: string; access?: 'supervised' | 'edits' | 'full'; capabilities?: Partial<{ shell: boolean; fileWrite: boolean; browser: boolean; agentEditsCharacter: boolean }>; memory?: Record<string, unknown> } = {}) {
 	const h = await open();
 	const botId = await createBot(h, { name: over.name ?? 'Mira', character: { tone: 'friendly', addressUserAs: 'Amrit' }, capabilities: over.capabilities, memory: over.memory as never }, { root });
-	const id = await createSession(h, null, FAUX, { botId });
+	const id = await createSession(h, FAUX, { botId });
 	await patchSession(h, id, { access: over.access ?? 'full' });
 	return { h, id, botId, bot: (await getBot(h, botId))! };
 }
@@ -124,7 +124,7 @@ describe('a session with a bot uses the bot', () => {
 		expect(first.prompt.indexOf('You are Mira')).toBeLessThan(first.prompt.indexOf('Workspace folder'));
 
 		const h2 = await open();
-		const plain = await createSession(h2, null, FAUX);
+		const plain = await createSession(h2, FAUX);
 		faux.setResponses([capture()]);
 		await (await run(h2, plain, 'Hello there, please introduce yourself briefly now')).wait(ctx());
 		const p = seen[seen.length - 1]!;
@@ -302,7 +302,7 @@ describe('agent tools on the bot', () => {
 describe('bot tools refuse in a plain session', () => {
 	test('character_edit without a bot is an error, not a crash', async () => {
 		const h = await open();
-		const plain = await createSession(h, null, FAUX);
+		const plain = await createSession(h, FAUX);
 		// force-select the bot extension on a bot-less session
 		const { botTools } = await import('./extension.ts');
 		await (await h.conversation(plain, ctx()))!.configure({ extensions: [botTools, ...DEFAULT_EXTENSIONS] }, ctx());

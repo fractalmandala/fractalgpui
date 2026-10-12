@@ -259,12 +259,11 @@ function guardTool<Tool extends ToolRegistration>(tool: Tool, toolClass: ToolCla
 			const meta = snap?.sessions[String(api.conversationId)];
 			const access: AccessMode = meta?.access ?? 'supervised';
 			const agentType: AgentType = meta?.agentType ?? 'build';
-			const projectId = meta?.projectId ?? null;
 			const botId = meta?.botId;
 			const botSnap = botId ? await api.snapshot(BotsDoc, context).catch(() => undefined) : undefined;
 			const bot = botId ? botSnap?.bots[botId] : undefined;
-			const workspace = (projectId ? snap?.projects[projectId]?.path : undefined) ?? bot?.workspace;
-			// Bots roam the drive; plain sessions stay confined to their project folder.
+			const workspace = bot ? bot.workspace : meta?.folder;
+			// Bots roam the drive; plain sessions stay confined to their folder.
 			const confineTo = bot ? undefined : workspace;
 			const callId = api.callId;
 			const summary = summarize(tool.name, args);

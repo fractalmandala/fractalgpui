@@ -2,18 +2,13 @@ import { openHarness, piModels } from './harness.svelte.ts';
 import { isTestEnv, resolveDefault } from './models.ts';
 import {
 	backfillSessions,
-	addProject as ioAddProject,
 	createSession as ioCreate,
 	ensureIndex as ioEnsure,
 	forkSession as ioFork,
-	moveSession as ioMove,
+	setSessionFolder as ioFolder,
 	assignSessionToBot as ioAssign,
-	removeProject as ioRemoveProject,
 	removeSession as ioRemove,
-	renameProject as ioRenameProject,
 	renameSession as ioRename,
-	setProjectArchived as ioArchiveProject,
-	setProjectPinned as ioPinProject,
 	setSessionArchived as ioArchive,
 	setSessionPinned as ioPin,
 	touchSession as ioTouch,
@@ -33,7 +28,7 @@ import { watchBots } from './bots/store.ts';
  * open-harness wiring. Selection and active sessions arrive in Slice 2.
  */
 
-export const index = $state<SessionsIndex>({ sessions: {}, projects: {} });
+export const index = $state<SessionsIndex>({ sessions: {} });
 
 /** Mirror of the `fractal.bots` document (read-only here; edits go through the bot store). */
 export const botIndex = $state<BotsIndex>({ bots: {} });
@@ -49,7 +44,6 @@ async function harness(): Promise<Harness> {
 			const h = await openHarness();
 			await ioEnsure(h, (next) => {
 				index.sessions = next.sessions;
-				index.projects = next.projects;
 			}, resolveDefault(piModels()));
 			await watchBots(h, (next) => {
 				botIndex.bots = next.bots;
@@ -67,15 +61,24 @@ export const ensureSessions = () => harness().then(() => {});
 
 export const sessionMeta = (id: ConversationId | string) => index.sessions[String(id)];
 
-export async function createSession(projectId: string | null, model: ModelRef, opts: { botId?: string } = {}): Promise<ConversationId> {
-	return ioCreate(await harness(), projectId, model, opts);
+/**
+ * The folder a session's file and shell tools work in: its bot's workspace (botroom unless assigned), or the
+ * folder chosen for a plain session. Undefined when there is none.
+ */
+export function sessionWorkspace(id: ConversationId | string): string | undefined {
+	const meta = index.sessions[String(id)];
+	return (meta?.botId ? botIndex.bots[meta.botId]?.workspace : meta?.folder) ?? undefined;
+}
+
+export async function createSession(model: ModelRef, opts: { botId?: string; folder?: string } = {}): Promise<ConversationId> {
+	return ioCreate(await harness(), model, opts);
 }
 
 export async function forkSession(
 	id: ConversationId,
 	at: EntryId,
 	model: ModelRef,
-	source: { projectId: string | null; title: string }
+	source: { folder?: string; title: string }
 ): Promise<ConversationId> {
 	return ioFork(await harness(), id, at, model, source);
 }
@@ -92,8 +95,9 @@ export async function setSessionArchived(id: ConversationId, archived: boolean):
 	await ioArchive(await harness(), id, archived);
 }
 
-export async function moveSession(id: ConversationId, projectId: string | null): Promise<void> {
-	await ioMove(await harness(), id, projectId);
+/** Set (or clear) a plain session's working folder. */
+export async function setSessionFolder(id: ConversationId, folder: string | null): Promise<void> {
+	await ioFolder(await harness(), id, folder);
 }
 
 /** Move a session to a bot (or `null`: back to a plain session). */
@@ -115,24 +119,4 @@ export async function removeSession(id: ConversationId): Promise<void> {
 	if (!isTestEnv()) deleteConversationRecords(agentDbPath(), id);
 	delete drafts[String(id)];
 	await ioRemove(h, id);
-}
-
-export async function addProject(path: string): Promise<string> {
-	return ioAddProject(await harness(), path);
-}
-
-export async function renameProject(id: string, name: string): Promise<boolean> {
-	return ioRenameProject(await harness(), id, name);
-}
-
-export async function setProjectPinned(id: string, pinned: boolean): Promise<void> {
-	await ioPinProject(await harness(), id, pinned);
-}
-
-export async function setProjectArchived(id: string, archived: boolean): Promise<void> {
-	await ioArchiveProject(await harness(), id, archived);
-}
-
-export async function removeProject(id: string): Promise<void> {
-	await ioRemoveProject(await harness(), id);
 }

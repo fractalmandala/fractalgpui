@@ -5,7 +5,7 @@
 	import IconButton from '../../ui/IconButton.svelte';
 	import { copy_text } from '../../kernel/clipboard.ts';
 	import { flash } from '../../kernel/status.svelte.ts';
-	import { index, renameSession, sessionMeta } from '../../kernel/pi/sessions.svelte.ts';
+	import { renameSession, sessionMeta, sessionWorkspace } from '../../kernel/pi/sessions.svelte.ts';
 
 	let { chat }: { chat: AgentChat } = $props();
 
@@ -27,10 +27,7 @@
 	});
 
 	const title = () => sessionMeta(chat.key)?.title ?? 'Session';
-	const workspace = () => {
-		const pid = sessionMeta(chat.key)?.projectId;
-		return (pid && index.projects[pid]?.path) || null;
-	};
+	const workspace = () => sessionWorkspace(chat.key) ?? null;
 
 	const summary = (detail: string, i: number) => {
 		if (detail.length <= 200 || expandedDetail[i]) return detail;

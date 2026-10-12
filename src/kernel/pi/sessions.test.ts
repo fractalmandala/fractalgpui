@@ -19,29 +19,25 @@ import {
 	deriveTitle,
 	freshSession,
 	mayDeriveTitle,
-	orderProjects,
 	orderSessions,
-	projectActivity,
+	sessionLabel,
+	uniqueLabels,
+	updatedLabel,
 	SessionsDoc,
 	type SessionsIndex,
 	type SessionMeta
 } from './metadata.ts';
 import {
-	addProject,
 	backfillSessions,
 	createSession,
+	dropLegacyProjects,
 	ensureIndex,
 	firstUserText,
 	forkSession,
-	moveSession,
-	projectDisplayName,
-	removeProject,
 	removeSession,
-	renameProject,
 	renameSession,
-	setProjectArchived,
-	setProjectPinned,
 	setSessionArchived,
+	setSessionFolder,
 	setSessionPinned,
 	touchSession
 } from './sessions-io.ts';
@@ -61,7 +57,6 @@ async function pollUntil(cond: () => boolean, timeoutMs: number): Promise<boolea
 
 const meta = (over: Partial<SessionMeta> = {}): SessionMeta => ({
 	title: 't',
-	projectId: null,
 	createdAt: 1,
 	updatedAt: 1,
 	pinned: false,
@@ -133,26 +128,55 @@ describe('orderSessions', () => {
 	});
 });
 
-describe('orderProjects + projectActivity', () => {
-	test('pinned first, then by newest session activity; archived sessions excluded', () => {
-		const sessions = [
-			{ id: 's1', meta: meta({ projectId: 'p1', updatedAt: 50 }) },
-			{ id: 's2', meta: meta({ projectId: 'p1', updatedAt: 90, archived: true }) },
-			{ id: 's3', meta: meta({ projectId: 'p2', updatedAt: 70 }) }
-		];
-		expect(projectActivity('p1', sessions)).toBe(50);
-		expect(projectActivity('p3', sessions)).toBe(0);
+describe('sessionLabel + updatedLabel', () => {
+	const at = new Date(2026, 9, 12, 9, 5).getTime();
+	test('a real title wins', () => {
+		expect(sessionLabel(meta({ title: 'Refactor the composer', createdAt: at }))).toBe('Refactor the composer');
+	});
+	test('untitled sessions show their start date and time, so they never look identical', () => {
+		const a = sessionLabel(meta({ title: 'New session', createdAt: at }));
+		const b = sessionLabel(meta({ title: 'New session', createdAt: at + 3600000 }));
+		expect(a).toContain('Oct 12');
+		expect(a).not.toBe(b);
+		expect(a).not.toContain('New session');
+	});
+	test('no timestamps at all falls back to Chat', () => {
+		expect(sessionLabel(meta({ title: 'New session', createdAt: 0, updatedAt: 0 }))).toBe('Chat');
+	});
+	test('updated stamp: time today, Yesterday, else the date', () => {
+		const now = new Date(2026, 9, 12, 12, 0).getTime();
+		expect(updatedLabel(at, now)).toMatch(/9:05/);
+		expect(updatedLabel(now - 86400000, now)).toBe('Yesterday');
+		expect(updatedLabel(now - 5 * 86400000, now)).toContain('Oct 7');
+		expect(updatedLabel(0, now)).toBe('');
+	});
+});
+
+describe('uniqueLabels', () => {
+	const t = new Date(2026, 9, 12, 9, 5, 7).getTime();
+	test('untitled chats started in the same minute are still told apart', () => {
 		const views = [
-			{ id: 'p1', meta: { path: '/a', name: 'a', pinned: false, archived: false }, activity: 50 },
-			{ id: 'p2', meta: { path: '/b', name: 'b', pinned: true, archived: false }, activity: 70 }
+			{ id: 'a', meta: meta({ title: 'New session', createdAt: t }) },
+			{ id: 'b', meta: meta({ title: 'New session', createdAt: t + 12000 }) },
+			{ id: 'c', meta: meta({ title: 'Real title' }) }
 		];
-		expect(orderProjects(views).map((v) => v.id)).toEqual(['p2', 'p1']);
+		const m = uniqueLabels(views);
+		expect(new Set([...m.values()]).size).toBe(3);
+		expect(m.get('c')).toBe('Real title');
+	});
+	test('identical timestamps get a counter', () => {
+		const views = [
+			{ id: 'a', meta: meta({ title: 'New session', createdAt: t }) },
+			{ id: 'b', meta: meta({ title: 'New session', createdAt: t }) }
+		];
+		const m = uniqueLabels(views);
+		expect(m.get('a')).not.toBe(m.get('b'));
 	});
 });
 
 describe('freshSession', () => {
-	test('defaults: build access supervised, no project', () => {
-		const s = freshSession(null, 123, 'faux', 'faux-1');
+	test('defaults: build access supervised, no folder', () => {
+		const s = freshSession(123, 'faux', 'faux-1');
 		expect(s.title).toBe('New session');
 		expect(s.agentType).toBe('build');
 		expect(s.access).toBe('supervised');
@@ -180,36 +204,38 @@ async function testHarness(): Promise<HarnessType> {
 const snapshotSessions = async (h: HarnessType) => (await h.snapshot(SessionsDoc, ctx()))?.sessions ?? {};
 
 describe('sessions-io against a real harness', () => {
-	test('create seeds the index with the project', async () => {
+	test('create seeds the index with the folder', async () => {
 		const h = await testHarness();
-		const id = await createSession(h, 'p1', FAUX);
+		const id = await createSession(h, FAUX, { folder: '/tmp/work' });
 		const sessions = await snapshotSessions(h);
-		expect(sessions[String(id)].projectId).toBe('p1');
+		expect(sessions[String(id)].folder).toBe('/tmp/work');
 		expect(sessions[String(id)].title).toBe('New session');
 	});
 
-	test('rename, pin, archive, move, touch round-trip', async () => {
+	test('rename, pin, archive, folder, touch round-trip', async () => {
 		const h = await testHarness();
-		const id = await createSession(h, null, FAUX);
+		const id = await createSession(h, FAUX);
 		const k = String(id);
 		expect(await renameSession(h, id, '  ')).toBe(false);
 		expect(await renameSession(h, id, 'Capital work')).toBe(true);
 		await setSessionPinned(h, id, true);
-		await moveSession(h, id, 'p9');
+		await setSessionFolder(h, id, '/tmp/p9');
 		await touchSession(h, id);
 		await setSessionArchived(h, id, true);
 		const m = (await snapshotSessions(h))[k];
 		expect(m.title).toBe('Capital work');
 		expect(m.pinned).toBe(true);
-		expect(m.projectId).toBe('p9');
+		expect(m.folder).toBe('/tmp/p9');
 		expect(m.archived).toBe(true);
 		expect(m.updatedAt).toBeGreaterThan(0);
 		await setSessionArchived(h, id, false);
+		await setSessionFolder(h, id, null);
+		expect('folder' in (await snapshotSessions(h))[k]).toBe(false);
 	});
 
 	test('backfill derives the title from the oldest user message', async () => {
 		const h = await testHarness();
-		const id = await createSession(h, null, FAUX);
+		const id = await createSession(h, FAUX);
 		const conv = await h.conversation(id, ctx());
 		if (!conv) throw new Error('conversation missing');
 		faux.setResponses([fauxAssistantMessage('Paris.')]);
@@ -226,9 +252,9 @@ describe('sessions-io against a real harness', () => {
 		expect(m.title).toBe('What is the capital city of France today');
 	});
 
-	test('fork keeps project and title and inherits history', async () => {
+	test('fork keeps folder and title and inherits history', async () => {
 		const h = await testHarness();
-		const id = await createSession(h, 'p2', FAUX);
+		const id = await createSession(h, FAUX, { folder: '/tmp/p2' });
 		const conv = await h.conversation(id, ctx());
 		if (!conv) throw new Error('conversation missing');
 		faux.setResponses([fauxAssistantMessage('ok')]);
@@ -237,10 +263,10 @@ describe('sessions-io against a real harness', () => {
 		const entries = await conv.entries({}, 10, undefined, ctx());
 		const at = [...entries.items].reverse().find((e) => e.kind === 'pi.user')?.id ?? entries.items[entries.items.length - 1].id;
 		await renameSession(h, id, 'Source task');
-		const forked = await forkSession(h, id, at, FAUX, { projectId: 'p2', title: 'Source task' });
+		const forked = await forkSession(h, id, at, FAUX, { folder: '/tmp/p2', title: 'Source task' });
 		expect(String(forked)).not.toBe(String(id));
 		const m = (await snapshotSessions(h))[String(forked)];
-		expect(m.projectId).toBe('p2');
+		expect(m.folder).toBe('/tmp/p2');
 		expect(m.title).toBe('Source task');
 		const forkConv = await h.conversation(forked, ctx());
 		if (!forkConv) throw new Error('fork missing');
@@ -251,7 +277,7 @@ describe('sessions-io against a real harness', () => {
 	test('removeSession drops the index entry', async () => {
 		const h = await testHarness();
 		const { removeSession } = await import('./sessions-io.ts');
-		const id = await createSession(h, null, FAUX);
+		const id = await createSession(h, FAUX);
 		await removeSession(h, id);
 		expect((await snapshotSessions(h))[String(id)]).toBeUndefined();
 	});
@@ -263,7 +289,7 @@ describe('sessions-io against a real harness', () => {
 			seen.push(next);
 		}, FAUX);
 		// Created after subscribing: the watch must deliver it without a re-read.
-		const id = await createSession(h, null, FAUX);
+		const id = await createSession(h, FAUX);
 		const k = String(id);
 		expect(await pollUntil(() => seen.some((ix) => ix.sessions[k]?.title === 'New session'), 3000)).toBe(true);
 		await renameSession(h, id, 'Live title');
@@ -275,48 +301,21 @@ describe('sessions-io against a real harness', () => {
 	});
 });
 
-describe('project operations', () => {
-	test('addProject validates the path and names from the base', async () => {
+describe('legacy projects upgrade', () => {
+	test('a store with a project registry keeps each session\'s folder, then drops the registry', async () => {
 		const h = await testHarness();
-		const dir = mkdtempSync(join(tmpdir(), 'fractalgpui-proj-'));
-		const file = join(dir, 'note.txt');
-		writeFileSync(file, 'x');
-		await expect(addProject(h, '')).rejects.toThrow('Enter a folder path');
-		await expect(addProject(h, 'relative/path')).rejects.toThrow('Not an absolute path');
-		await expect(addProject(h, join(dir, 'missing'))).rejects.toThrow('No such folder');
-		await expect(addProject(h, file)).rejects.toThrow('Not a folder');
-		const id = await addProject(h, dir);
-		expect(id).toBe(dir);
-		const snap = await h.snapshot(SessionsDoc, ctx());
-		expect(snap?.projects[dir]?.name).toBe(projectDisplayName(dir));
-		expect(snap?.projects[dir]?.pinned).toBe(false);
-		// Re-adding selects instead of duplicating.
-		expect(await addProject(h, `${dir}/`)).toBe(dir);
-	});
-
-	test('rename/pin/archive round-trip; empty rename rejected', async () => {
-		const h = await testHarness();
-		const dir = mkdtempSync(join(tmpdir(), 'fractalgpui-proj-'));
-		await addProject(h, dir);
-		expect(await renameProject(h, dir, '  ')).toBe(false);
-		expect(await renameProject(h, dir, 'My Project')).toBe(true);
-		await setProjectPinned(h, dir, true);
-		await setProjectArchived(h, dir, true);
-		const snap = await h.snapshot(SessionsDoc, ctx());
-		expect(snap?.projects[dir]?.name).toBe('My Project');
-		expect(snap?.projects[dir]?.pinned).toBe(true);
-		expect(snap?.projects[dir]?.archived).toBe(true);
-	});
-
-	test('removeProject drops the entry and frees its sessions', async () => {
-		const h = await testHarness();
-		const dir = mkdtempSync(join(tmpdir(), 'fractalgpui-proj-'));
-		await addProject(h, dir);
-		const id = await createSession(h, dir, FAUX);
-		await removeProject(h, dir);
-		const snap = await h.snapshot(SessionsDoc, ctx());
-		expect(snap?.projects[dir]).toBeUndefined();
-		expect(snap?.sessions[String(id)]?.projectId).toBeNull();
+		const id = await createSession(h, FAUX);
+		await h.commit(async (tx) => {
+			const d = (await tx.doc(SessionsDoc)) as unknown as { sessions: Record<string, Record<string, unknown>>; projects?: Record<string, unknown> };
+			d.sessions[String(id)] = { ...JSON.parse(JSON.stringify(d.sessions[String(id)])), projectId: '/tmp/old-project' };
+			d.projects = { '/tmp/old-project': { path: '/tmp/old-project', name: 'old', pinned: false, archived: false } };
+		}, ctx());
+		await dropLegacyProjects(h);
+		const snap = (await h.snapshot(SessionsDoc, ctx())) as unknown as { sessions: Record<string, Record<string, unknown>>; projects?: unknown };
+		expect(snap.sessions[String(id)].folder).toBe('/tmp/old-project');
+		expect('projectId' in snap.sessions[String(id)]).toBe(false);
+		expect(snap.projects).toBeUndefined();
+		await dropLegacyProjects(h); // idempotent
 	});
 });
 

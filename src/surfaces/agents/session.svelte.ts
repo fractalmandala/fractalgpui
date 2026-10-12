@@ -17,6 +17,7 @@ import {
 	ensureSessions,
 	forkSession,
 	index as sessionIndex,
+	sessionWorkspace,
 	botIndex,
 	removeSession as removeSessionRecords,
 	renameSession,
@@ -248,11 +249,7 @@ export class AgentChat {
 	}
 
 	private workspacePath(): string | undefined {
-		const meta = sessionMeta(this.key);
-		const pid = meta?.projectId;
-		const project = (pid && sessionIndex.projects[pid]?.path) || undefined;
-		// A bot session without a project works in the bot's workspace (its botroom by default).
-		return project ?? (meta?.botId ? botIndex.bots[meta.botId]?.workspace : undefined) ?? undefined;
+		return sessionWorkspace(this.key);
 	}
 
 	/** The usage document for speed deltas (absent until the view opens). */
@@ -679,11 +676,21 @@ export async function selectSession(id: string): Promise<AgentChat> {
 	return chat;
 }
 
-/** ⌘N: a session in the current session's project, selected and ready. */
+/** What a new session inherits from the one beside it: the same bot, or the same folder for a plain session. */
+const inherit = (m: { botId?: string; folder?: string } | undefined) => (m?.botId ? { botId: m.botId } : m?.folder ? { folder: m.folder } : {});
+
+/** A new chat for a bot, selected and ready (the bot's own session list, see SessionList). */
+export async function newChatForBot(botId: string | null): Promise<AgentChat> {
+	await ensureActive();
+	const id = await createSession(defaults(), botId ? { botId } : {});
+	return selectSession(String(id));
+}
+
+/** ⌘N: a session like the current one (same bot or folder), selected and ready. */
 export async function newSession(): Promise<AgentChat> {
 	await ensureActive();
 	const current = view.surface ? sessionMeta(view.surface.key) : undefined;
-	const id = await createSession(current?.projectId ?? null, defaults());
+	const id = await createSession(defaults(), inherit(current));
 	return selectSession(String(id));
 }
 
@@ -702,7 +709,7 @@ async function openPanelChat(): Promise<AgentChat> {
 	await ensureActive();
 	if (view.panel) return view.panel;
 	const current = view.surface ? sessionMeta(view.surface.key) : undefined;
-	const id = await createSession(current?.projectId ?? null, defaults());
+	const id = await createSession(defaults(), inherit(current));
 	active.panel = String(id);
 	activeSlot.panel = active.panel;
 	view.panel = await openSessionChat(active.panel);
@@ -747,7 +754,7 @@ export async function deleteSession(id: string): Promise<string> {
 		.sort((a, b) => b[1].updatedAt - a[1].updatedAt || Number(a[0]) - Number(b[0]));
 	let next = remaining.length ? remaining[0][0] : null;
 	if (!next) {
-		const created = await createSession(null, defaults());
+		const created = await createSession(defaults());
 		next = String(created);
 	}
 	active.surface = [next, ...active.surface.filter((s) => s !== id && s !== next)];
@@ -764,7 +771,7 @@ export async function deleteSession(id: string): Promise<string> {
 /**
  * Branch from here (§1.11): a second session inheriting the source's history
  * up to its newest entry, selected, source untouched. An empty source has
- * nothing to inherit, so it creates a fresh session in the same project.
+ * nothing to inherit, so it creates a fresh session for the same bot or folder.
  */
 export async function branchSession(id: string): Promise<AgentChat | null> {
 	await ensureActive();
@@ -780,9 +787,9 @@ export async function branchSession(id: string): Promise<AgentChat | null> {
 	const page = await conv.entries({}, 1, undefined, pi_context());
 	const at = page.items[0]?.id;
 	if (!at) {
-		const fresh = await createSession(meta.projectId, { provider: meta.provider, modelId: meta.modelId });
+		const fresh = await createSession({ provider: meta.provider, modelId: meta.modelId }, inherit(meta));
 		return selectSession(String(fresh));
 	}
-	const forked = await forkSession(cid, at, { provider: meta.provider, modelId: meta.modelId }, { projectId: meta.projectId, title: meta.title });
+	const forked = await forkSession(cid, at, { provider: meta.provider, modelId: meta.modelId }, { ...(meta.folder ? { folder: meta.folder } : {}), title: meta.title });
 	return selectSession(String(forked));
 }

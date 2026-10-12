@@ -8,17 +8,19 @@ import App from '../../App.svelte';
 import { open_view } from '../../kernel/dock/dock.svelte.ts';
 import { run } from '../../kernel/commands.svelte.ts';
 import { last_copied } from '../../kernel/clipboard.ts';
-import { last_revealed } from '../../kernel/reveal.ts';
 import { scriptFauxReply, scriptFauxResponses } from '../../kernel/pi/models.ts';
 import { fauxAssistantMessage, fauxToolCall } from '@earendil-works/pi-ai/providers/faux';
 import { openHarness, pi_context } from '../../kernel/pi/harness.svelte.ts';
-import { addProject, createSession, sessionMeta } from '../../kernel/pi/sessions.svelte.ts';
+import { botIndex, createSession, sessionHarness, sessionMeta } from '../../kernel/pi/sessions.svelte.ts';
+import { sessionLabel } from '../../kernel/pi/metadata.ts';
+import { createBot } from '../../kernel/pi/bots/store.ts';
 import {
 	active,
 	branchSession,
 	deleteSession,
 	ensureActive,
 	mainChat,
+	newChatForBot,
 	newSession,
 	openSessionChat,
 	panelChat,
@@ -121,10 +123,10 @@ async function ui_is(id: string, present = true, timeoutMs = 5000): Promise<bool
 	return false;
 }
 
-async function project_is(id: string, projectId: string | null, timeoutMs = 5000): Promise<boolean> {
+async function folder_is(id: string, folder: string | undefined, timeoutMs = 5000): Promise<boolean> {
 	const end = Date.now() + timeoutMs;
 	while (Date.now() < end) {
-		if (sessionMeta(id)?.projectId === projectId) return true;
+		if (sessionMeta(id)?.folder === folder) return true;
 		await sleep(100);
 	}
 	return false;
@@ -148,7 +150,7 @@ check('the surface tab shows the session', !!find_test_id(`surface-tabs-${a.key}
 
 // The history sidebar lists the boot session with an active ring
 check('the history lists the boot session', !!find_test_id(`hist-session-${a.key}`), true);
-check('the active session carries the ring', painted().includes('○'), true);
+check('the row shows a real label, not the bare default title', painted().includes('Chat ·'), true);
 
 // Left click selects and never opens a menu
 click_test_id(`hist-session-${a.key}`);
@@ -164,7 +166,7 @@ check('delete is the danger row', !!find_test_id(`hist-session-${a.key}-menu-del
 // typing appends; retried because focus races make one shot flaky)
 let renamed = false;
 for (let attempt = 0; attempt < 3 && !renamed; attempt++) {
-	const before = sessionMeta(a.key)?.title ?? '';
+	const before = sessionLabel(sessionMeta(a.key)!);
 	click_test_id(`hist-session-${a.key}`, { button: 2 });
 	click_test_id(`hist-session-${a.key}-menu-rename`);
 	if (!find_test_id(`hist-session-${a.key}-rename`)) continue;
@@ -267,7 +269,7 @@ check('unarchive restores the row', await title_is(b.key, sessionMeta(b.key)?.ti
 
 // Regression: rows used to collapse to a dot with no name. Every row must paint a readable title.
 for (const key of [a.key, b.key]) {
-	const title = sessionMeta(key)?.title ?? '';
+	const title = sessionLabel(sessionMeta(key)!);
 	const t = title ? find_text(title) : null;
 	check(`the row of ${key.slice(0, 6)} paints its title`, !!t && (bounds(t)?.[2] ?? 0) > 40, true);
 	const row = bounds(find_test_id(`hist-session-${key}`)!);
@@ -284,28 +286,53 @@ check('the refusal keeps the panel session', active.panel, peer.key);
 click_test_id(`surface-tabs-${a.key}`);
 check('clicking a tab selects it', await main_is(a.key), true);
 
-// A project: add by path, move a session in, open the folder, delete it
-const projDir = mkdtempSync(join(tmpdir(), 'fractalgpui-ag-hist-'));
-const projInput = find_test_id('hist-add-input');
-if (projInput) focus(projInput);
-type(projDir.split('').join(' '));
-click_test_id('hist-add');
-check('the project row appears', await ui_is(`hist-project-${ptid(projDir)}`), true);
-click_test_id(`hist-project-${ptid(projDir)}`, { button: 2 });
-check('right-click opens the project menu', !!find_test_id(`hist-project-${ptid(projDir)}-menu-open`), true);
-click_test_id(`hist-project-${ptid(projDir)}-menu-open`);
-check('open folder records the path without spawning', last_revealed(), projDir);
+// Bots and chats: each bot lists ITS chats, with a New chat; the rest are plain sessions
+const hs = await sessionHarness();
+const botA = await createBot(hs, { name: 'Ada' });
+const botB = await createBot(hs, { name: 'Bram' });
+await ui_is(`hist-bot-${ptid(botA)}`);
+check('a bot group appears with its avatar and name', await ui_is(`hist-bot-${ptid(botA)}`) && !!find_text('Ada'), true);
+check('the old Projects section is gone', !find_test_id('hist-add-input') && !painted().includes('Projects') && !painted().includes('Add project'), true);
+click_test_id(`hist-bot-${ptid(botA)}-new`);
+const adaKey = await main_changes(mainChat().key);
+check('New chat under a bot opens a session of that bot', !!adaKey && sessionMeta(adaKey)?.botId === botA, true);
+check('that chat is listed under the bot', !!adaKey && (await ui_is(`hist-session-${adaKey}`)), true);
+check('the bot group counts its chat', await ui_is(`hist-bot-${ptid(botA)}-toggle`), true);
+check('a bot session works in the bot workspace', !!adaKey && !!botIndex.bots[botA]?.workspace && sessionMeta(adaKey)?.folder === undefined, true);
+// two untitled chats never look identical
+const adaChat2 = await newChatForBot(botA);
+await ui_is(`hist-session-${adaChat2.key}-title`);
+type Node = { text?: string; children?: Node[] } | null | undefined;
+const textIn = (n: Node): string => (n ? (n.text ?? '') + (n.children ?? []).map(textIn).join('') : '');
+const t1 = textIn(find_test_id(`hist-session-${adaKey}-title`));
+const t2 = textIn(find_test_id(`hist-session-${adaChat2.key}-title`));
+check('untitled rows are told apart', !!t1 && !!t2 && t1 !== t2 && !t1.includes('New session'), true);
+check('rows show an updated time', !!find_test_id(`hist-session-${adaKey}-updated`), true);
+// Move to bot: a popover listing bots, not an inline list
 click_test_id(`hist-session-${a.key}`, { button: 2 });
-click_test_id(`hist-session-${a.key}-menu-move`);
-click_test_id(`hist-session-${a.key}-menu-move:${projDir}`);
-check('the move clears the stray row', await project_is(a.key, projDir), true);
-click_test_id(`hist-project-${ptid(projDir)}`, { button: 2 });
-click_test_id(`hist-project-${ptid(projDir)}-menu-delete`);
-check('the project confirm says sessions survive', !!find_test_id(`hist-project-${ptid(projDir)}-delete`), true);
-click_test_id(`hist-project-${ptid(projDir)}-delete-yes`);
-check('deleting frees the session to strays', await project_is(a.key, null), true);
+click_test_id(`hist-session-${a.key}-menu-bot`);
+check('Move to bot opens a dialog listing the bots', await ui_is('hist-move') && !!find_test_id(`hist-move-${ptid(botB)}`) && !!find_test_id('hist-move-none'), true);
+click_test_id(`hist-move-${ptid(botB)}`);
+check('the move assigns the session to that bot', await (async () => { for (let i = 0; i < 50; i++) { if (sessionMeta(a.key)?.botId === botB) return true; await sleep(100); } return false; })(), true);
+check('the dialog closes', await ui_is('hist-move', false), true);
+click_test_id(`hist-session-${a.key}`, { button: 2 });
+click_test_id(`hist-session-${a.key}-menu-bot`);
+click_test_id('hist-move-none');
+check('No bot returns it to a plain session', await (async () => { for (let i = 0; i < 50; i++) { if (sessionMeta(a.key)?.botId === undefined) return true; await sleep(100); } return false; })(), true);
+// delete asks first, in a dialog
+click_test_id(`hist-session-${adaChat2.key}`, { button: 2 });
+click_test_id(`hist-session-${adaChat2.key}-menu-delete`);
+check('delete asks for confirmation', await ui_is('hist-delete'), true);
+click_test_id('hist-delete-cancel');
+check('cancel keeps the chat', !!sessionMeta(adaChat2.key) && (await ui_is('hist-delete', false)), true);
+click_test_id(`hist-session-${adaChat2.key}`, { button: 2 });
+click_test_id(`hist-session-${adaChat2.key}-menu-delete`);
+click_test_id('hist-delete-yes');
+check('confirming deletes it', await (async () => { for (let i = 0; i < 50; i++) { if (!sessionMeta(adaChat2.key)) return true; await sleep(100); } return false; })(), true);
 settle();
 
+await selectSession(a.key); // a plain session: bot sessions show their bot's workspace instead
+settle();
 // Folder picker: browse instead of typing paths (Composer + history)
 click_test_id('ag-folder');
 check('choose folder opens the picker', await ui_is('ag-picker'), true);
@@ -323,25 +350,12 @@ click_test_id('ag-picker-up');
 check('up returns', await ui_is('ag-picker-row-subA'), true);
 click_test_id('ag-picker-row-subB');
 click_test_id('ag-picker-choose');
-check('choose adds the project and moves the session', await project_is(mainChat().key, join(pickRoot, 'subB')), true);
+check('choose sets the session folder', await folder_is(mainChat().key, join(pickRoot, 'subB')), true);
 check('the picker closes after choose', await ui_is('ag-picker', false), true);
-click_test_id('hist-browse');
-check('history browse opens the picker', await ui_is('hist-picker'), true);
-click_test_id('hist-picker-cancel');
-check('cancel closes it', await ui_is('hist-picker', false), true);
-const pickRoot2 = mkdtempSync(join(tmpdir(), 'fractalgpui-ag-pick2-'));
-click_test_id('hist-browse');
-const jumpInput2 = find_test_id('hist-picker-input');
-if (jumpInput2) focus(jumpInput2);
-type(pickRoot2.split('').join(' '));
-click_test_id('hist-picker-go');
-click_test_id('hist-picker-choose');
-check('history choose adds the project row', await ui_is(`hist-project-${ptid(pickRoot2)}`), true);
 
 // Approvals, end to end: supervised write asks, Approve runs it
 const wsDir = mkdtempSync(join(tmpdir(), 'fractalgpui-ag-appr-'));
-const wsPid = await addProject(wsDir);
-const wsId = await createSession(wsPid, { provider: 'faux', modelId: 'faux-1' });
+const wsId = await createSession({ provider: 'faux', modelId: 'faux-1' }, { folder: wsDir });
 const c = await selectSession(String(wsId));
 scriptFauxResponses([
 	fauxAssistantMessage([fauxToolCall('write', { path: 'note-ok.txt', content: 'approved-content' }, { id: 'w-ok' })], { stopReason: 'toolUse' }),
@@ -405,7 +419,5 @@ try {
 }
 check('opening a missing session throws', threw.includes('unknown session'), true);
 
-rmSync(projDir, { recursive: true, force: true });
 rmSync(pickRoot, { recursive: true, force: true });
-rmSync(pickRoot2, { recursive: true, force: true });
-finish('agents', 83);
+finish('agents', 89);

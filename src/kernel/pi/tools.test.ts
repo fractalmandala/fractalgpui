@@ -68,13 +68,11 @@ async function makeSession(
 	await h.commit(async (tx) => {
 		const d = await tx.doc(SessionsDoc);
 		d.sessions[String(conv.id)] = {
-			...freshSession(over.project === false ? null : 'p1', now, FAUX.provider, FAUX.modelId),
+			...freshSession(now, FAUX.provider, FAUX.modelId),
 			access: over.access ?? 'supervised',
-			agentType: over.agentType ?? 'build'
+			agentType: over.agentType ?? 'build',
+			...(over.project === false ? {} : { folder: workspace })
 		};
-		if (over.project !== false) {
-			d.projects['p1'] = { path: workspace, name: 'ws', pinned: false, archived: false };
-		}
 	}, ctx());
 	return conv.id;
 }

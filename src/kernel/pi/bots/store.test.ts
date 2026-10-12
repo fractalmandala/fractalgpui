@@ -174,7 +174,7 @@ describe('duplicate, list, upgrade, watch', () => {
 		const h = await open();
 		const id = await createBot(h, { name: 'Src', character: { tone: 'playful' }, capabilities: { browser: false } }, o);
 		await updateBot(h, id, { roles: ['writer'] }, o);
-		const s = await createSession(h, null, FAUX, { botId: id });
+		const s = await createSession(h, FAUX, { botId: id });
 		const copyId = await duplicateBot(h, id, undefined, o);
 		const copy = (await getBot(h, copyId))!;
 		const src = (await getBot(h, id))!;
@@ -218,11 +218,11 @@ describe('delete keeps sessions', () => {
 		const h = await open();
 		const id = await createBot(h, { name: 'Gone' }, o);
 		const bot = (await getBot(h, id))!;
-		const s1 = await createSession(h, null, FAUX, { botId: id });
-		const s2 = await createSession(h, null, FAUX, { botId: id });
-		const plain = await createSession(h, null, FAUX);
+		const s1 = await createSession(h, FAUX, { botId: id });
+		const s2 = await createSession(h, FAUX, { botId: id });
+		const plain = await createSession(h, FAUX);
 		const other = await createBot(h, { name: 'Other' }, o);
-		const s3 = await createSession(h, null, FAUX, { botId: other });
+		const s3 = await createSession(h, FAUX, { botId: other });
 		const r = await deleteBot(h, id, o);
 		expect(r.detached.sort()).toEqual([String(s1), String(s2)].sort());
 		const snap = (await h.snapshot(SessionsDoc, ctx()))!;
@@ -254,13 +254,13 @@ describe('delete keeps sessions', () => {
 describe('sessions without a bot', () => {
 	test('stay plain: no botId key, no explicit extensions', async () => {
 		const h = await open();
-		const s = await createSession(h, null, FAUX);
+		const s = await createSession(h, FAUX);
 		const meta = (await h.snapshot(SessionsDoc, ctx()))!.sessions[String(s)]!;
 		expect('botId' in meta).toBe(false);
 		const agent = await (await h.conversation(s, ctx()))!.agent(ctx());
 		expect(agent?.extensions.map((e) => e.name)).toContain("fractal-tools");
 		expect(agent?.extensions.map((e) => e.name)).not.toContain("fractal-bot");
-		await expect(createSession(h, null, FAUX, { botId: 'bot_missing' })).rejects.toThrow(/No such bot/);
+		await expect(createSession(h, FAUX, { botId: 'bot_missing' })).rejects.toThrow(/No such bot/);
 	});
 });
 
@@ -272,7 +272,7 @@ describe('move to bot', () => {
 		const h = await open();
 		const a = await createBot(h, { name: 'First' }, o);
 		const b = await createBot(h, { name: 'Second' }, o);
-		const s = await createSession(h, null, FAUX, { botId: a });
+		const s = await createSession(h, FAUX, { botId: a });
 		await deleteBot(h, a, o);
 		const meta = () => h.snapshot(SessionsDoc, ctx()).then((d) => d!.sessions[String(s)]!);
 		expect('botId' in (await meta())).toBe(false);
@@ -288,7 +288,7 @@ describe('move to bot', () => {
 	});
 	test('refuses a missing bot or session and changes nothing', async () => {
 		const h = await open();
-		const s = await createSession(h, null, FAUX);
+		const s = await createSession(h, FAUX);
 		await expect(assignSessionToBot(h, s, 'bot_nonexistent')).rejects.toThrow(/No such bot/);
 		const b = await createBot(h, { name: 'Real' }, o);
 		await expect(assignSessionToBot(h, 999999 as never, b)).rejects.toThrow(/No such session/);

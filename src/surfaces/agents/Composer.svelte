@@ -11,9 +11,10 @@
 	import Chip from '../../ui/Chip.svelte';
 	import ContextGauge from '../../ui/ContextGauge.svelte';
 	import FolderPicker from '../../ui/FolderPicker.svelte';
+	import { checkDirInput } from '../../kernel/folders.ts';
 	import Icon from '../../ui/Icon.svelte';
 	import Menu, { type MenuItem } from '../../ui/Menu.svelte';
-	import { addProject, drafts, index, moveSession, sessionMeta } from '../../kernel/pi/sessions.svelte.ts';
+	import { botIndex, drafts, sessionMeta, sessionWorkspace, setSessionFolder } from '../../kernel/pi/sessions.svelte.ts';
 	import { workspaceInfo } from '../../kernel/pi/workspace.ts';
 	import type { AccessMode, AgentType } from '../../kernel/pi/metadata.ts';
 	import type { AgentChat } from './session.svelte.ts';
@@ -61,16 +62,14 @@
 	const typeLabel = () => TYPES.find((t) => t.id === chat.agentType)?.label ?? chat.agentType;
 	const accessLabel = () => ACCESS.find((a) => a.id === chat.access)?.label ?? chat.access;
 
-	const projectId = () => sessionMeta(chat.key)?.projectId ?? null;
-	const project = () => {
-		const pid = projectId();
-		return pid ? index.projects[pid] : undefined;
-	};
+	const botId = () => sessionMeta(chat.key)?.botId;
+	const botName = () => (botId() ? botIndex.bots[botId()!]?.identity.name : undefined);
+	const workspace = () => sessionWorkspace(chat.key);
 	const extraWorktrees = () => {
-		const p = project();
+		const p = workspace();
 		if (!p) return 0;
 		try {
-			return Math.max(0, workspaceInfo(p.path).worktrees - 1);
+			return Math.max(0, workspaceInfo(p).worktrees - 1);
 		} catch {
 			return 0;
 		}
@@ -84,8 +83,9 @@
 
 	async function commitFolder(path: string) {
 		try {
-			const id = await addProject(path);
-			await moveSession(Number(chat.key), id);
+			const problem = checkDirInput(path).error;
+			if (problem) throw new Error(problem);
+			await setSessionFolder(Number(chat.key), path);
 			folderOpen = false;
 		} catch (err) {
 			flash(`Could not use that folder: ${(err as Error).message}`, 'danger');
@@ -198,15 +198,16 @@
 			/>
 		{/if}
 		<div class="row ycenter gap-sm pad-sm">
-			{#if project()}
-				<WorkspaceRow path={project()?.path ?? ''} name={project()?.name} />
+			{#if workspace()}
+				<WorkspaceRow path={workspace() ?? ''} />
 				{#if extraWorktrees() > 0}<text class="text-xs text-muted">{extraWorktrees()} more</text>{/if}
+				{#if botId()}<text class="text-xs text-muted" testId="ag-bot-workspace">{botName()}'s workspace (change it in the bot editor)</text>{/if}
 			{:else}
 				<text class="text-sm text-muted">No folder</text>
 				<Button label="Choose folder" variant="ghost" testId="ag-folder" onclick={() => (folderOpen = !folderOpen)} />
 			{/if}
 		</div>
-		{#if folderOpen && !project()}
+		{#if folderOpen && !workspace()}
 			<FolderPicker
 				onchoose={commitFolder}
 				onclose={() => (folderOpen = false)}

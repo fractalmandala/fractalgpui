@@ -2,8 +2,7 @@ import { defineDoc, type SessionDocToken } from '@earendil-works/pi-durable';
 import type { ModelThinkingLevel } from '@earendil-works/pi-ai';
 
 /**
- * The session index: every session the app knows, and every project folder it
- * groups them under. `ConversationRecord` carries nothing but identity (no title,
+ * The session index: every session the app knows. `ConversationRecord` carries nothing but identity (no title,
  * no timestamps), so this session-scoped singleton document is the durable home
  * for all of it — one `watchDoc` subscription serves the whole history sidebar.
  */
@@ -13,8 +12,8 @@ export type AccessMode = 'supervised' | 'edits' | 'full';
 
 export type SessionMeta = {
 	title: string;
-	/** Project id, or null for stray sessions (§1.2). Fixed at creation (§1.15), moved by §1.16. */
-	projectId: string | null;
+	/** Working folder of a plain session (chosen in the composer); bot sessions use their bot's workspace. Omitted when unset. */
+	folder?: string;
 	/** App-written: entries carry no timestamps. 0 = unknown (upgrade backfill → Older). */
 	createdAt: number;
 	updatedAt: number;
@@ -32,34 +31,23 @@ export type SessionMeta = {
 	/* Drafts are memory-only (§2.8: "not written to storage") — kept in `drafts`, not here. */
 }
 
-export type ProjectMeta = {
-	/** Absolute folder path. The app never writes into it (§1.19). */
-	path: string;
-	/** Display name; defaults to the folder's base name. */
-	name: string;
-	pinned: boolean;
-	archived: boolean;
-}
-
 export type SessionsIndex = {
 	sessions: Record<string, SessionMeta>;
-	projects: Record<string, ProjectMeta>;
 }
 
 export const SessionsDoc: SessionDocToken<SessionsIndex> = defineDoc({
 	kind: 'fractal.sessions',
 	version: 1,
 	scope: 'session',
-	initial: () => ({ sessions: {}, projects: {} })
+	initial: () => ({ sessions: {} })
 });
 
 export const DEFAULT_TITLE = 'New session';
 
 /** A fresh index entry: what `conversationCreated` seeds for every new conversation. */
-export function freshSession(projectId: string | null, now: number, provider: string, modelId: string): SessionMeta {
+export function freshSession(now: number, provider: string, modelId: string): SessionMeta {
 	return {
 		title: DEFAULT_TITLE,
-		projectId,
 		createdAt: now,
 		updatedAt: now,
 		pinned: false,
@@ -126,30 +114,45 @@ export function orderSessions(views: readonly SessionView[]): SessionView[] {
 	return [...pinned, ...rest];
 }
 
-export interface ProjectView {
-	id: string;
-	meta: ProjectMeta;
-	/** Newest activity of any of its non-archived sessions, 0 when it has none. */
-	activity: number;
+/**
+ * What a session row shows. A real title when there is one; otherwise the date and time it started, so two
+ * untitled sessions never look identical.
+ */
+export function sessionLabel(meta: Pick<SessionMeta, 'title' | 'createdAt' | 'updatedAt'>, seconds = false): string {
+	if (meta.title && meta.title !== DEFAULT_TITLE) return meta.title;
+	const at = meta.createdAt || meta.updatedAt;
+	if (!at) return 'Chat';
+	const d = new Date(at);
+	const date = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+	const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', ...(seconds ? { second: '2-digit' } : {}) });
+	return `Chat · ${date}, ${time}`;
 }
 
-/** Project order: pinned first, then most-recent session activity (§1.3, §1.9). */
-export function orderProjects(views: readonly ProjectView[]): ProjectView[] {
-	const byActivity = (a: ProjectView, b: ProjectView) =>
-		b.activity - a.activity || (a.id < b.id ? -1 : 1);
-	return [
-		...views.filter((v) => v.meta.pinned).sort(byActivity),
-		...views.filter((v) => !v.meta.pinned).sort(byActivity)
-	];
-}
-
-/** Most recent `updatedAt` among a project's non-archived sessions (0 when none). */
-export function projectActivity(projectId: string, sessions: readonly SessionView[]): number {
-	let at = 0;
-	for (const s of sessions) {
-		if (s.meta.projectId === projectId && !s.meta.archived && s.meta.updatedAt > at) {
-			at = s.meta.updatedAt;
-		}
+/**
+ * Labels for a list of rows, guaranteed distinct: rows whose label collides (two chats started in the same
+ * minute) get seconds, and anything still colliding gets a counter.
+ */
+export function uniqueLabels(views: readonly SessionView[]): Map<string, string> {
+	const out = new Map<string, string>();
+	const count = new Map<string, number>();
+	for (const v of views) count.set(sessionLabel(v.meta), (count.get(sessionLabel(v.meta)) ?? 0) + 1);
+	const seen = new Map<string, number>();
+	for (const v of views) {
+		let label = sessionLabel(v.meta);
+		if ((count.get(label) ?? 0) > 1 && v.meta.title !== label) label = sessionLabel(v.meta, true);
+		const n = (seen.get(label) ?? 0) + 1;
+		seen.set(label, n);
+		out.set(v.id, n > 1 ? `${label} (${n})` : label);
 	}
-	return at;
+	return out;
+}
+
+/** A short "updated" stamp: time today, "Yesterday", else the date. Injected clock for tests. */
+export function updatedLabel(updatedAt: number, now: number = Date.now()): string {
+	if (!updatedAt) return '';
+	const d = new Date(updatedAt);
+	const bucket = classifyBucket(updatedAt, now);
+	if (bucket === 'today') return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+	if (bucket === 'yesterday') return 'Yesterday';
+	return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }

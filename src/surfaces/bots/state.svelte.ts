@@ -199,7 +199,7 @@ export async function remove(id: string) {
 /** Start a chat with this bot in its botroom (or assigned workspace). */
 export async function chatWith(id: string) {
 	try {
-		const sid = await createSession(null, resolveDefault(piModels()), { botId: id });
+		const sid = await createSession(resolveDefault(piModels()), { botId: id });
 		await selectSession(String(sid as ConversationId));
 		open_view('chat');
 	} catch (err) {

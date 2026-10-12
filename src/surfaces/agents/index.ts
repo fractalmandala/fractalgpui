@@ -15,9 +15,9 @@ import { requestDelete, requestPanel, requestRename } from './panels.svelte.ts';
 // tabs inside the view), and a side chat holding a second session.
 const sessions = {
 	id: 'sessions',
-	title: 'Sessions',
+	title: 'Chats',
 	icon: 'history',
-	description: 'Session history, projects and bots\' sessions',
+	description: 'Bots and their chats, plus plain sessions',
 	component: SessionList
 } satisfies View;
 

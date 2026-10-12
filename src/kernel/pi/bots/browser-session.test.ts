@@ -73,7 +73,7 @@ async function open(): Promise<HarnessType> {
 async function botSession(access: 'supervised' | 'full', browser = true) {
 	const h = await open();
 	const botId = await createBot(h, { name: 'Surfer', capabilities: { browser } }, { root });
-	const id = await createSession(h, null, FAUX, { botId });
+	const id = await createSession(h, FAUX, { botId });
 	await patchSession(h, id, { access });
 	return { h, id, botId };
 }
@@ -104,7 +104,7 @@ async function transcriptText(h: HarnessType, id: ConversationId) {
 describe('bot browser tools', () => {
 	test('only bot sessions have them', async () => {
 		const h = await open();
-		const plain = await createSession(h, null, FAUX);
+		const plain = await createSession(h, FAUX);
 		const names = (await (await h.conversation(plain, ctx()))!.agent(ctx()))!.tools.map((t) => t.name);
 		expect(names.some((n) => n.startsWith('browser_'))).toBe(false);
 		const { id } = await botSession('full');

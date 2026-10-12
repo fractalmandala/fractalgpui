@@ -1,5 +1,4 @@
 import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
-import { existsSync, statSync } from 'node:fs';
 import type { Draft } from '@earendil-works/chord';
 import type {
 	ConversationId,
@@ -16,7 +15,6 @@ import {
 	freshSession,
 	SessionsDoc,
 	type SessionsIndex,
-	type ProjectMeta,
 	type SessionMeta
 } from './metadata.ts';
 import { projectEntries } from './project.ts';
@@ -43,8 +41,8 @@ export interface ModelRef {
 function applySnapshot(value: Readonly<SessionsIndex> | null, onIndex: (index: SessionsIndex) => void) {
 	onIndex(
 		value
-			? clone({ sessions: value.sessions ?? {}, projects: value.projects ?? {} })
-			: { sessions: {}, projects: {} }
+			? clone({ sessions: value.sessions ?? {} })
+			: { sessions: {} }
 	);
 }
 
@@ -57,6 +55,7 @@ export async function ensureIndex(h: Harness, onIndex: (index: SessionsIndex) =>
 		await tx.doc(SessionsDoc);
 		await tx.doc(BotsDoc);
 	}, ctx());
+	await dropLegacyProjects(h);
 	await backfillSessions(h, fallback);
 	const watch: DocumentWatch<SessionsIndex> | undefined = await h.watchDoc(SessionsDoc, ctx());
 	if (!watch) {
@@ -93,7 +92,7 @@ export async function backfillSessions(h: Harness, fallback: ModelRef): Promise<
 			for (const r of missing) {
 				const text = await firstUserText(h, r.id);
 				const title = (text && deriveTitle([text])) || DEFAULT_TITLE;
-				seeds.push([String(r.id), { ...freshSession(null, 0, fallback.provider, fallback.modelId), title, createdAt: 0, updatedAt: 0 }]);
+				seeds.push([String(r.id), { ...freshSession(0, fallback.provider, fallback.modelId), title, createdAt: 0, updatedAt: 0 }]);
 			}
 			await h.commit(async (tx) => {
 				const d: Draft<SessionsIndex> = await tx.doc(SessionsDoc);
@@ -135,21 +134,20 @@ async function mutateSession(
 }
 
 /**
- * Create a conversation and pin its project. The `conversationCreated` hook
- * seeds the index entry first; this overwrites it with the real project, which
- * is race-free where a pending-project flag would not be.
+ * Create a conversation. The `conversationCreated` hook seeds the index entry first; this overwrites it
+ * with the real model, bot and folder, which is race-free where a pending flag would not be. A bot session
+ * works in the bot's workspace; a plain session may be given a `folder`.
  */
 export async function createSession(
 	h: Harness,
-	projectId: string | null,
 	model: ModelRef,
-	opts: { botId?: string } = {}
+	opts: { botId?: string; folder?: string } = {}
 ): Promise<ConversationId> {
 	const bot = opts.botId ? (await h.snapshot(BotsDoc, ctx()))?.bots[opts.botId] : undefined;
 	if (opts.botId && !bot) throw new Error(`No such bot: ${opts.botId}`);
-	// A bot session selects the bot extension (identity, profile, memory sections and tools) and, without a
-	// project, works in the bot's workspace (its botroom by default).
-	const cwd = bot && !projectId ? bot.workspace : undefined;
+	// A bot session selects the bot extension (identity, profile, memory sections and tools) and works in the
+	// bot's workspace (its botroom by default).
+	const cwd = bot ? bot.workspace : opts.folder;
 	const conv = await h.createConversation(
 		{
 			ownership: { kind: 'ownerless' },
@@ -161,11 +159,11 @@ export async function createSession(
 	await h.commit(async (tx) => {
 		const d: Draft<SessionsIndex> = await tx.doc(SessionsDoc);
 		d.sessions[key(conv.id)] = {
-			...(d.sessions[key(conv.id)] ?? freshSession(projectId, now, model.provider, model.modelId)),
-			projectId,
+			...(d.sessions[key(conv.id)] ?? freshSession(now, model.provider, model.modelId)),
 			provider: model.provider,
 			modelId: model.modelId,
-			...(opts.botId ? { botId: opts.botId } : {})
+			...(opts.botId ? { botId: opts.botId } : {}),
+			...(!bot && opts.folder ? { folder: opts.folder } : {})
 		};
 	}, ctx());
 	return conv.id;
@@ -173,7 +171,7 @@ export async function createSession(
 
 /**
  * "Move to bot": give a session (usually a detached one) to `botId`, or return it to a plain session with
- * `null`. The session keeps its transcript, project and folder; the bot's identity, profile, memory and tools
+ * `null`. The session keeps its transcript; the bot's identity, profile, memory and tools
  * apply from the next turn. The bot must exist.
  */
 export async function assignSessionToBot(h: Harness, id: ConversationId, botId: string | null): Promise<void> {
@@ -194,24 +192,24 @@ export async function assignSessionToBot(h: Harness, id: ConversationId, botId: 
 
 /**
  * A second session inheriting the source's history up to `at`. Keeps the
- * source's project and title; using either session never touches the other.
+ * source's folder and title; using either session never touches the other.
  */
 export async function forkSession(
 	h: Harness,
 	id: ConversationId,
 	at: EntryId,
 	model: ModelRef,
-	source: { projectId: string | null; title: string }
+	source: { folder?: string; title: string }
 ): Promise<ConversationId> {
 	const conv = await h.conversation(id, ctx());
 	if (!conv) throw new Error(`[fractalgpui] cannot branch unknown session ${String(id)}`);
-	const forked = await conv.fork(at, { ownership: { kind: 'ownerless' }, agent: { model } }, ctx());
+	const forked = await conv.fork(at, { ownership: { kind: 'ownerless' }, agent: { model, ...(source.folder ? { cwd: source.folder } : {}) } }, ctx());
 	const now = Date.now();
 	await h.commit(async (tx) => {
 		const d: Draft<SessionsIndex> = await tx.doc(SessionsDoc);
 		d.sessions[key(forked.id)] = {
-			...(d.sessions[key(forked.id)] ?? freshSession(source.projectId, now, model.provider, model.modelId)),
-			projectId: source.projectId,
+			...(d.sessions[key(forked.id)] ?? freshSession(now, model.provider, model.modelId)),
+			...(source.folder ? { folder: source.folder } : {}),
 			title: source.title,
 			provider: model.provider,
 			modelId: model.modelId
@@ -234,8 +232,15 @@ export const setSessionPinned = (h: Harness, id: ConversationId, pinned: boolean
 export const setSessionArchived = (h: Harness, id: ConversationId, archived: boolean) =>
 	mutateSession(h, id, (m) => (m ? { ...m, archived } : undefined));
 
-export const moveSession = (h: Harness, id: ConversationId, projectId: string | null) =>
-	mutateSession(h, id, (m) => (m ? { ...m, projectId } : undefined));
+/** Set (or clear with `null`) a plain session's working folder. */
+export const setSessionFolder = (h: Harness, id: ConversationId, folder: string | null) =>
+	mutateSession(h, id, (m) => {
+		if (!m) return undefined;
+		const next = { ...m };
+		if (folder) next.folder = folder;
+		else delete next.folder;
+		return next;
+	});
 export const touchSession = (h: Harness, id: ConversationId) =>
 	mutateSession(h, id, (m) => (m ? { ...m, updatedAt: Date.now() } : undefined));
 
@@ -261,85 +266,32 @@ export async function patchSession(h: Harness, id: ConversationId, patch: Partia
 export async function ensureSessionMeta(h: Harness, id: ConversationId, fallback: ModelRef): Promise<void> {
 	await h.commit(async (tx) => {
 		const d: Draft<SessionsIndex> = await tx.doc(SessionsDoc);
-		if (!d.sessions[key(id)]) d.sessions[key(id)] = freshSession(null, Date.now(), fallback.provider, fallback.modelId);
+		if (!d.sessions[key(id)]) d.sessions[key(id)] = freshSession(Date.now(), fallback.provider, fallback.modelId);
 	}, ctx());
 }
-// --- projects ---------------------------------------------------------------
-
-/** A project's id is its absolute folder path; the display name defaults to the base name. */
-export function projectDisplayName(path: string): string {
-	const base = path.replace(/\/+$/, '').split('/').pop() || path;
-	return base || path;
-}
-
-async function mutateProject(
-	h: Harness,
-	id: string,
-	fn: (meta: ProjectMeta | undefined) => ProjectMeta | undefined
-): Promise<void> {
-	await h.commit(async (tx) => {
-		const d: Draft<SessionsIndex> = await tx.doc(SessionsDoc);
-		const cur = d.projects[id];
-		const next = fn(cur ? clone(cur) : undefined);
-		if (next) d.projects[id] = next;
-		else delete d.projects[id];
-	}, ctx());
-}
+// --- upgrade ---------------------------------------------------------------
 
 /**
- * Add a project by absolute folder path (§1.19). Throws with the reason when
- * the path is missing, relative, absent, or not a directory. Re-adding an
- * existing project returns its id instead of duplicating it. Never writes
- * into the folder itself.
+ * Older stores grouped sessions under "projects" (a folder registry). That registry is gone: a session that
+ * had one keeps its folder as its own `folder`, then the registry and `projectId` fields are dropped.
+ * Idempotent: a store without them is left untouched.
  */
-export async function addProject(h: Harness, path: string): Promise<string> {
-	const raw = path.trim();
-	if (!raw) throw new Error('Enter a folder path.');
-	const clean = raw.replace(/\/+$/, '') || '/';
-	if (!clean.startsWith('/')) throw new Error(`Not an absolute path: ${clean}`);
-	let isDir = false;
-	try {
-		isDir = statSync(clean).isDirectory();
-	} catch {
-		isDir = false;
-	}
-	if (!existsSync(clean) || !isDir) {
-		if (!existsSync(clean)) throw new Error(`No such folder: ${clean}`);
-		throw new Error(`Not a folder: ${clean}`);
-	}
-	const snap = await h.snapshot(SessionsDoc, ctx());
-	if (snap?.projects[clean]) return clean;
+export async function dropLegacyProjects(h: Harness): Promise<void> {
+	const snap = (await h.snapshot(SessionsDoc, ctx())) as unknown as { sessions?: Record<string, Record<string, unknown>>; projects?: Record<string, { path?: string }> } | undefined;
+	const legacy = Object.values(snap?.sessions ?? {}).some((s) => 'projectId' in s) || (snap && 'projects' in snap);
+	if (!legacy) return;
 	await h.commit(async (tx) => {
-		const d: Draft<SessionsIndex> = await tx.doc(SessionsDoc);
-		if (!d.projects[clean]) d.projects[clean] = { path: clean, name: projectDisplayName(clean), pinned: false, archived: false };
-	}, ctx());
-	return clean;
-}
-
-/** Rename edits the display name only, never the path. Empty names are rejected. */
-export async function renameProject(h: Harness, id: string, name: string): Promise<boolean> {
-	const clean = name.trim();
-	if (!clean) return false;
-	await mutateProject(h, id, (m) => (m ? { ...m, name: clean } : undefined));
-	return true;
-}
-
-export const setProjectPinned = (h: Harness, id: string, pinned: boolean) =>
-	mutateProject(h, id, (m) => (m ? { ...m, pinned } : undefined));
-
-export const setProjectArchived = (h: Harness, id: string, archived: boolean) =>
-	mutateProject(h, id, (m) => (m ? { ...m, archived } : undefined));
-
-/**
- * Delete the project entry only (§1.13): its sessions survive with their
- * project cleared, so they move to the Sessions group. Never deletes files.
- */
-export async function removeProject(h: Harness, id: string): Promise<void> {
-	await h.commit(async (tx) => {
-		const d: Draft<SessionsIndex> = await tx.doc(SessionsDoc);
-		delete d.projects[id];
+		const d = (await tx.doc(SessionsDoc)) as unknown as { sessions: Record<string, Record<string, unknown>>; projects?: Record<string, { path?: string }> };
+		const projects = clone(d.projects ?? {});
 		for (const sid of Object.keys(d.sessions)) {
-			if (d.sessions[sid]?.projectId === id) d.sessions[sid] = { ...clone(d.sessions[sid]), projectId: null };
+			const cur = d.sessions[sid];
+			if (!('projectId' in cur)) continue;
+			const next = clone(cur);
+			const path = typeof next.projectId === 'string' ? projects[next.projectId]?.path : undefined;
+			delete next.projectId;
+			if (path && !next.folder) next.folder = path;
+			d.sessions[sid] = next;
 		}
+		delete d.projects;
 	}, ctx());
 }

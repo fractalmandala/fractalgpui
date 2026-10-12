@@ -45,7 +45,7 @@ export async function openHarness(): Promise<HarnessType> {
 					// Plain sessions keep the shipped tools only; bot sessions add the bot extension at creation.
 					settings: { extensions: DEFAULT_EXTENSIONS },
 					// Per-conversation filesystem + shell, rooted at the session's
-					// workspace folder (Slice 3). A session with no project gets an
+					// workspace folder (Slice 3). A session with no folder gets an
 					// env it cannot usefully act in; the policy layer (§6.10)
 					// refuses those calls before they reach it.
 					env: (target) => new NodeExecutionEnv({ cwd: target.cwd ?? data_dir(), shellEnv: process.env }),
@@ -55,7 +55,7 @@ export async function openHarness(): Promise<HarnessType> {
 						try {
 							const d = await tx.doc(SessionsDoc);
 							const id = String(conversation.id);
-							if (!d.sessions[id]) d.sessions[id] = freshSession(null, Date.now(), seed.provider, seed.modelId);
+							if (!d.sessions[id]) d.sessions[id] = freshSession(Date.now(), seed.provider, seed.modelId);
 						} catch (err) {
 							console.warn(`[fractalgpui] session index seed failed: ${(err as Error).message}`);
 						}

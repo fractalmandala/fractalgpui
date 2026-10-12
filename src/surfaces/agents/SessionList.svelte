@@ -1,57 +1,30 @@
 <script lang="ts">
+	import Avatar from '../../ui/Avatar.svelte';
 	import Button from '../../ui/Button.svelte';
 	import ContextMenu, { isRightClick } from '../../ui/ContextMenu.svelte';
 	import Icon from '../../ui/Icon.svelte';
 	import IconButton from '../../ui/IconButton.svelte';
-	import FolderPicker from '../../ui/FolderPicker.svelte';
+	import Modal from '../../ui/Modal.svelte';
 	import type { MenuItem } from '../../ui/Menu.svelte';
-	import SectionLabel from '../../ui/SectionLabel.svelte';
-	import { revealPath } from '../../kernel/reveal.ts';
 	import { flash } from '../../kernel/status.svelte.ts';
-	import { agentDbPath } from '../../kernel/pi/sessions-sql.ts';
-	import { copy_text as copy } from '../../kernel/clipboard.ts';
-	import { resolveDefault } from '../../kernel/pi/models.ts';
-	import { piModels } from '../../kernel/pi/harness.svelte.ts';
+	import { open_view } from '../../kernel/dock/dock.svelte.ts';
+	import { orderSessions, sessionLabel, uniqueLabels, updatedLabel, type SessionView } from '../../kernel/pi/metadata.ts';
 	import {
-		classifyBucket,
-		orderProjects,
-		orderSessions,
-		projectActivity,
-		type ProjectView,
-		type SessionView,
-		type TimeBucket
-	} from '../../kernel/pi/metadata.ts';
-	import {
-		active,
-		branchSession,
-		chats,
-		deleteSession,
-		ensureActive,
-		newSession,
-		selectSession
-	} from './session.svelte.ts';
-	import {
-		addProject,
 		assignSession,
-		createSession,
 		botIndex,
 		index,
-		moveSession,
-		removeProject,
-		renameProject,
 		renameSession,
 		sessionMeta,
-		setProjectArchived,
-		setProjectPinned,
 		setSessionArchived,
 		setSessionPinned
 	} from '../../kernel/pi/sessions.svelte.ts';
-	import { isCollapsed, setCollapsed, sidebarUi } from './history.svelte.ts';
-	import WorkspaceRow from './WorkspaceRow.svelte';
+	import { active, branchSession, chats, deleteSession, ensureActive, newChatForBot, selectSession } from './session.svelte.ts';
+	import { isCollapsed, PLAIN, setCollapsed, sidebarUi } from './history.svelte.ts';
 	import { deleteAsk } from './panels.svelte.ts';
 
-	// The history sidebar (§1): Sessions, Projects, Archived, Add project.
-	// Replaces the old provider/model/keys panel (now in Settings, §7).
+	// Bots and chats. Each bot (avatar, name) expands to ITS chats with a "New chat"; sessions that belong to
+	// no bot sit under "Plain sessions". A bot's workspace is set in the bot editor, so there is no folder
+	// list here.
 
 	$effect(() => {
 		void ensureActive();
@@ -59,7 +32,7 @@
 
 	$effect(() => {
 		if (deleteAsk.id) {
-			confirming = { kind: 'session', id: deleteAsk.id };
+			confirming = deleteAsk.id;
 			deleteAsk.id = null;
 		}
 	});
@@ -67,169 +40,57 @@
 	const tid = (id: string) => id.replace(/[^a-zA-Z0-9]/g, '-');
 
 	const allViews = (): SessionView[] => Object.entries(index.sessions).map(([id, meta]) => ({ id, meta }));
-	const strays = () => orderSessions(allViews().filter((v) => !v.meta.archived && !v.meta.projectId));
-	const projects = (): ProjectView[] =>
-		orderProjects(
-			Object.entries(index.projects)
-				.filter(([, m]) => !m.archived)
-				.map(([id, meta]) => ({ id, meta, activity: projectActivity(id, allViews()) }))
-		);
-	const archivedProjects = (): ProjectView[] =>
-		orderProjects(
-			Object.entries(index.projects)
-				.filter(([, m]) => m.archived)
-				.map(([id, meta]) => ({ id, meta, activity: projectActivity(id, allViews()) }))
-		);
-	const archivedSessions = () => orderSessions(allViews().filter((v) => v.meta.archived));
-	const inProject = (pid: string) => orderSessions(allViews().filter((v) => !v.meta.archived && v.meta.projectId === pid));
+	const botOf = (v: SessionView) => (v.meta.botId && botIndex.bots[v.meta.botId] ? v.meta.botId : null);
+	const live = $derived(allViews().filter((v) => !v.meta.archived));
+	const bots = $derived(
+		Object.entries(botIndex.bots)
+			.filter(([, b]) => !b.archived)
+			.map(([id, bot]) => ({ id, bot }))
+			.sort((a, b) => a.bot.identity.name.localeCompare(b.bot.identity.name) || (a.id < b.id ? -1 : 1))
+	);
+	const inBot = (id: string) => orderSessions(live.filter((v) => botOf(v) === id));
+	const plain = $derived(orderSessions(live.filter((v) => botOf(v) === null)));
+	const archived = $derived(orderSessions(allViews().filter((v) => v.meta.archived)));
 
-	const BUCKETS: { id: TimeBucket; label: string }[] = [
-		{ id: 'today', label: 'Today' },
-		{ id: 'yesterday', label: 'Yesterday' },
-		{ id: 'previous14', label: 'Previous 14 days' },
-		{ id: 'older', label: 'Older' }
-	];
-	const bucketsOf = (pid: string) => {
-		const now = Date.now();
-		return BUCKETS.map((b) => ({
-			...b,
-			views: inProject(pid).filter((v) => classifyBucket(v.meta.updatedAt, now) === b.id)
-		})).filter((b) => b.views.length > 0);
-	};
-
-	const isOpen = (id: string) => active.surface.includes(id) || active.panel === id;
+	const labels = $derived(uniqueLabels(allViews()));
+	const labelOf = (id: string) => labels.get(id) ?? 'Chat';
 	const isBusy = (id: string) => chats.get(id)?.busy ?? false;
-	const projectBusy = (pid: string) => inProject(pid).some((v) => isBusy(v.id));
+	const groupBusy = (views: SessionView[]) => views.some((v) => isBusy(v.id));
 
-	let menu = $state<{ kind: 'session' | 'project'; id: string } | null>(null);
-	let moveFor = $state<string | null>(null);
-	let botFor = $state<string | null>(null);
-	let editing = $state<{ kind: 'session' | 'project'; id: string } | null>(null);
+	let menu = $state<string | null>(null);
+	let editing = $state<string | null>(null);
 	let draft = $state('');
-	let confirming = $state<{ kind: 'session' | 'project'; id: string } | null>(null);
-	let addDraft = $state('');
-	let addError = $state<string | null>(null);
-	let pickOpen = $state(false);
-	let dragging = $state<string | null>(null);
-	let dropTarget = $state<string | null>(null);
+	let confirming = $state<string | null>(null);
+	let moving = $state<string | null>(null);
 
-	const closeMenu = () => {
-		menu = null;
-		moveFor = null;
-		botFor = null;
-	};
+	const closeMenu = () => (menu = null);
 
 	function sessionItems(id: string): MenuItem[] {
 		const meta = sessionMeta(id);
 		if (!meta) return [];
-		if (moveFor === id) {
-			return [
-				{ id: 'back', label: 'Back', icon: 'chevron-right' },
-				...projects().map((p) => ({ id: `move:${p.id}`, label: p.meta.name, icon: 'folder' as const })),
-				{ id: 'move:', label: 'Sessions (no project)', icon: 'house' as const }
-			];
-		}
-		if (botFor === id) {
-			return [
-				{ id: 'back', label: 'Back', icon: 'chevron-right' },
-				...Object.entries(botIndex.bots)
-					.filter(([, b]) => !b.archived)
-					.map(([bid, b]) => ({ id: `bot:${bid}`, label: b.identity.name, icon: 'bot' as const, checked: meta.botId === bid })),
-				{ id: 'bot:', label: 'No bot (plain session)', icon: 'house' as const, checked: !meta.botId }
-			];
-		}
 		return [
 			{ id: 'rename', label: 'Rename', icon: 'pencil' },
+			{ id: 'bot', label: 'Move to bot…', icon: 'bot' },
 			{ id: 'pin', label: meta.pinned ? 'Unpin' : 'Pin', icon: 'pin' },
 			{ id: 'archive', label: meta.archived ? 'Unarchive' : 'Archive', icon: 'archive' },
-			{ id: 'move', label: 'Move to', icon: 'folder' },
-			{ id: 'bot', label: 'Move to bot', icon: 'bot' },
 			{ id: 'branch', label: 'Branch from here', icon: 'git-fork' },
-			{ id: 'copy-id', label: 'Copy session ID', icon: 'copy' },
-			{ id: 'copy-path', label: 'Copy store path', icon: 'copy' },
-			{ id: 'delete', label: 'Delete', icon: 'trash-2', danger: true }
-		];
-	}
-
-	function projectItems(pid: string): MenuItem[] {
-		const meta = index.projects[pid];
-		if (!meta) return [];
-		return [
-			{ id: 'open', label: 'Open folder', icon: 'folder-open' },
-			{ id: 'rename', label: 'Rename project', icon: 'pencil' },
-			{ id: 'pin', label: meta.pinned ? 'Unpin project' : 'Pin project', icon: 'pin' },
-			{ id: 'archive', label: meta.archived ? 'Unarchive project' : 'Archive project', icon: 'archive' },
-			{ id: 'delete', label: 'Delete project', icon: 'trash-2', danger: true },
-			{ id: 'close', label: 'Close', icon: 'x' }
+			{ id: 'delete', label: 'Delete…', icon: 'trash-2', danger: true }
 		];
 	}
 
 	async function runSessionAction(id: string, item: string) {
 		const meta = sessionMeta(id);
-		if (!meta) return closeMenu();
+		closeMenu();
+		if (!meta) return;
 		try {
-			if (item === 'back') {
-				moveFor = null;
-				botFor = null;
-			}
-			else if (item === 'rename') {
-				draft = meta.title;
-				editing = { kind: 'session', id };
-				closeMenu();
-			} else if (item === 'pin') {
-				await setSessionPinned(Number(id), !meta.pinned);
-				closeMenu();
-			} else if (item === 'archive') {
-				await setSessionArchived(Number(id), !meta.archived);
-				closeMenu();
-			} else if (item === 'move') moveFor = id;
-			else if (item === 'bot') botFor = id;
-			else if (item.startsWith('bot:')) {
-				const target = item.slice(4) || null;
-				await assignSession(Number(id), target);
-				flash(target ? `Moved to ${botIndex.bots[target]?.identity.name ?? 'the bot'}` : 'Now a plain session', 'success');
-				closeMenu();
-			} else if (item.startsWith('move:')) {
-				await moveSession(Number(id), item.slice(5) || null);
-				closeMenu();
-			} else if (item === 'branch') {
-				await branchSession(id);
-				closeMenu();
-			} else if (item === 'copy-id') {
-				copy(id);
-				closeMenu();
-			} else if (item === 'copy-path') {
-				copy(agentDbPath());
-				closeMenu();
-			} else if (item === 'delete') {
-				confirming = { kind: 'session', id };
-				closeMenu();
-			}
-		} catch (err) {
-			flash(`That didn't work: ${(err as Error).message}`, 'danger');
-		}
-	}
-	async function runProjectAction(pid: string, item: string) {
-		const meta = index.projects[pid];
-		if (!meta) return closeMenu();
-		try {
-			if (item === 'open') {
-				if (!revealPath(meta.path)) flash(`Could not open ${meta.path}`, 'danger');
-				closeMenu();
-			} else if (item === 'rename') {
-				draft = meta.name;
-				editing = { kind: 'project', id: pid };
-				closeMenu();
-			} else if (item === 'pin') {
-				await setProjectPinned(pid, !meta.pinned);
-				closeMenu();
-			} else if (item === 'archive') {
-				await setProjectArchived(pid, !meta.archived);
-				closeMenu();
-			} else if (item === 'delete') {
-				confirming = { kind: 'project', id: pid };
-				closeMenu();
-			} else closeMenu();
+			if (item === 'rename') {
+				draft = labelOf(id);
+				editing = id;
+			} else if (item === 'bot') moving = id;
+			else if (item === 'pin') await setSessionPinned(Number(id), !meta.pinned);
+			else if (item === 'archive') await setSessionArchived(Number(id), !meta.archived);
+			else if (item === 'branch') await branchSession(id);
+			else if (item === 'delete') confirming = id;
 		} catch (err) {
 			flash(`That didn't work: ${(err as Error).message}`, 'danger');
 		}
@@ -240,8 +101,7 @@
 		const clean = draft.trim();
 		if (!clean) return;
 		try {
-			if (editing.kind === 'session') await renameSession(Number(editing.id), clean);
-			else await renameProject(editing.id, clean);
+			await renameSession(Number(editing), clean);
 			editing = null;
 		} catch (err) {
 			flash(`That didn't work: ${(err as Error).message}`, 'danger');
@@ -249,389 +109,161 @@
 	}
 
 	async function commitDelete() {
-		if (!confirming) return;
+		const id = confirming;
+		if (!id) return;
+		confirming = null;
 		try {
-			if (confirming.kind === 'session') await deleteSession(confirming.id);
-			else await removeProject(confirming.id);
-			confirming = null;
+			await deleteSession(id);
 		} catch (err) {
 			flash(`That didn't work: ${(err as Error).message}`, 'danger');
 		}
 	}
 
-	async function commitAddProject() {
-		addError = null;
+	async function commitMove(botId: string | null) {
+		const id = moving;
+		moving = null;
+		if (!id) return;
 		try {
-			const id = await addProject(addDraft);
-			addDraft = '';
-			setCollapsed(id, false);
-		} catch (err) {
-			addError = (err as Error).message;
-		}
-	}
-
-	async function commitPick(path: string) {
-		pickOpen = false;
-		addError = null;
-		try {
-			const id = await addProject(path);
-			setCollapsed(id, false);
-		} catch (err) {
-			addError = (err as Error).message;
-		}
-	}
-
-	async function newInProject(pid: string | null) {
-		try {
-			const id = await createSession(pid, resolveDefault(piModels()));
-			await selectSession(String(id));
+			await assignSession(Number(id), botId);
+			flash(botId ? `Moved to ${botIndex.bots[botId]?.identity.name ?? 'the bot'}` : 'Now a plain session', 'success');
 		} catch (err) {
 			flash(`That didn't work: ${(err as Error).message}`, 'danger');
 		}
 	}
 
-	function startDrag(id: string, e: { button?: number }) {
-		if ((e.button ?? 0) !== 0) return;
-		dragging = id;
-		dropTarget = null;
-	}
-
-	function endDrag() {
-		if (dragging && dropTarget !== null) {
-			const meta = sessionMeta(dragging);
-			const target = dropTarget === '' ? null : dropTarget;
-			if (meta && meta.projectId !== target) void moveSession(Number(dragging), target).catch((err) => flash(`That didn't work: ${(err as Error).message}`, 'danger'));
+	async function newChat(botId: string | null) {
+		try {
+			await newChatForBot(botId);
+			open_view('chat');
+		} catch (err) {
+			flash(`That didn't work: ${(err as Error).message}`, 'danger');
 		}
-		dragging = null;
-		dropTarget = null;
 	}
 </script>
 
-<!-- svelte-ignore a11y_click_events_have_key_events -->
-<!-- svelte-ignore a11y_no_static_element_interactions -->
-<div
-	class="box gap-md pad-md scroll-y"
-	testId="hist-list"
-	onmouseup={endDrag}
-	onmousemove={(e: { pressedButton?: number }) => {
-		if (dragging && (e.pressedButton ?? 1) === 0) {
-			dragging = null;
-			dropTarget = null;
-		}
-	}}
->
-	{#if strays().length}
-		<div class="box gap-xs">
-			<div class="row ycenter xbetween gap-sm px-sm">
-				<SectionLabel label="Sessions" />
-				<IconButton icon="plus" testId="hist-new" onclick={() => void newSession()} />
-			</div>
-			{#each strays() as v (v.id)}
-				<div
-					class="wb-row-item row ycenter gap-sm"
-					class:active={active.surface[0] === v.id}
-					class:wb-drop-on={dropTarget === '' && dragging !== null}
-					hitbox="self"
-					testId={`hist-session-${v.id}`}
-					onclick={() => void selectSession(v.id)}
-					onauxclick={(e: { isRightClick?: unknown }) => {
-						if (isRightClick(e)) menu = { kind: 'session', id: v.id };
-					}}
-					onmousedown={(e: { button?: number }) => startDrag(v.id, e)}
-					onmouseenter={() => {
-						if (dragging) dropTarget = '';
-					}}
-				>
-					{#if isOpen(v.id)}<text class="text-sm text-secondary">○</text>{/if}
-					{#if isBusy(v.id)}<div class="wb-live-dot"></div>{/if}
-					<text class="nav-section-title grow min0 truncate">{v.meta.title}</text>
-					{#if v.meta.botId}<text class="nav-section-small shrink-0 truncate" testId={`hist-session-${v.id}-bot`}>{botIndex.bots[v.meta.botId]?.identity.name ?? ""}</text>{/if}
-					<IconButton
-						icon="more-horizontal"
-						testId={`hist-session-${v.id}-more`}
-						onclick={() => (menu = menu?.id === v.id ? null : { kind: 'session', id: v.id })}
-					/>
+{#snippet sessionRow(v: SessionView)}
+	<div
+		class="wb-row-item row ycenter gap-sm"
+		class:active={active.surface[0] === v.id}
+		hitbox="self"
+		testId={`hist-session-${v.id}`}
+		onclick={() => void selectSession(v.id)}
+		onauxclick={(e: { isRightClick?: unknown }) => {
+			if (isRightClick(e)) menu = v.id;
+		}}
+	>
+		{#if isBusy(v.id)}<div class="wb-live-dot"></div>{/if}
+		<text class="nav-section-title grow min0 truncate" testId={`hist-session-${v.id}-title`}>{labelOf(v.id)}</text>
+		<text class="nav-section-small shrink-0" testId={`hist-session-${v.id}-updated`}>{updatedLabel(v.meta.updatedAt)}</text>
+		<IconButton icon="more-horizontal" testId={`hist-session-${v.id}-more`} onclick={() => (menu = menu === v.id ? null : v.id)} />
+	</div>
+	{#if editing === v.id}
+		<input
+			class="input"
+			testId={`hist-session-${v.id}-rename`}
+			value={draft}
+			autofocus
+			onchange={(e: { value: string }) => (draft = e.value)}
+			onsubmit={commitRename}
+			onkeydown={(e: { key?: string }) => {
+				if ((e.key ?? '').toLowerCase() === 'escape') editing = null;
+			}}
+		/>
+	{/if}
+	{#if menu === v.id}
+		<ContextMenu open items={sessionItems(v.id)} onselect={(item) => void runSessionAction(v.id, item)} onclose={closeMenu} testId={`hist-session-${v.id}-menu`} />
+	{/if}
+{/snippet}
+
+<div class="box gap-sm pad-md scroll-y" testId="surface-sessions">
+	{#each bots as { id, bot } (id)}
+		{@const mine = inBot(id)}
+		<div class="box gap-xs" testId={`hist-bot-${tid(id)}`}>
+			<div class="wb-row-item row ycenter gap-sm">
+				<div class="row ycenter gap-sm grow min0" hitbox="self" testId={`hist-bot-${tid(id)}-toggle`} onclick={() => setCollapsed(id, !isCollapsed(id))}>
+					<Icon name={isCollapsed(id) ? 'chevron-right' : 'chevron-down'} tone="muted" />
+					<Avatar {id} name={bot.identity.name} avatar={bot.avatar} />
+					<text class="nav-section-title grow min0 truncate">{bot.identity.name}</text>
+					{#if groupBusy(mine)}<div class="wb-live-dot"></div>{/if}
+					<text class="nav-section-small shrink-0" testId={`hist-bot-${tid(id)}-count`}>{mine.length}</text>
 				</div>
-				{#if editing?.kind === 'session' && editing.id === v.id}
-					<input
-						class="input"
-						testId={`hist-session-${v.id}-rename`}
-						value={draft}
-						autofocus
-						onchange={(e: { value: string }) => (draft = e.value)}
-						onsubmit={commitRename}
-						onkeydown={(e: { key?: string }) => {
-							if ((e.key ?? '').toLowerCase() === 'escape') editing = null;
-						}}
-					/>
-				{/if}
-				{#if confirming?.kind === 'session' && confirming.id === v.id}
-					<div class="box gap-xs px-sm" testId={`hist-session-${v.id}-delete`}>
-						<text class="text-sm text-primary">Delete this session?</text>
-						<div class="row ycenter gap-xs">
-							<Button label="Delete" variant="danger" testId={`hist-session-${v.id}-delete-yes`} onclick={commitDelete} />
-							<Button label="Cancel" variant="ghost" onclick={() => (confirming = null)} />
-						</div>
-					</div>
-				{/if}
-				{#if menu?.kind === 'session' && menu.id === v.id}
-					<ContextMenu
-						open
-						items={sessionItems(v.id)}
-						onselect={(item) => void runSessionAction(v.id, item)}
-						onclose={closeMenu}
-						testId={`hist-session-${v.id}-menu`}
-					/>
-				{/if}
-			{/each}
+				<IconButton icon="plus" testId={`hist-bot-${tid(id)}-new`} onclick={() => void newChat(id)} />
+			</div>
+			{#if !isCollapsed(id)}
+				{#each mine as v (v.id)}
+					{@render sessionRow(v)}
+				{:else}
+					<text class="text-xs text-muted px-sm">No chats yet.</text>
+				{/each}
+			{/if}
+		</div>
+	{/each}
+
+	{#if plain.length || !bots.length}
+		<div class="box gap-xs" testId="hist-plain">
+			<div class="wb-row-item row ycenter gap-sm">
+				<div class="row ycenter gap-sm grow min0" hitbox="self" testId="hist-plain-toggle" onclick={() => setCollapsed(PLAIN, !isCollapsed(PLAIN))}>
+					<Icon name={isCollapsed(PLAIN) ? 'chevron-right' : 'chevron-down'} tone="muted" />
+					<Icon name="message-square" tone="secondary" />
+					<text class="nav-section-title grow min0 truncate">Plain sessions</text>
+					{#if groupBusy(plain)}<div class="wb-live-dot"></div>{/if}
+					<text class="nav-section-small shrink-0">{plain.length}</text>
+				</div>
+				<IconButton icon="plus" testId="hist-plain-new" onclick={() => void newChat(null)} />
+			</div>
+			{#if !isCollapsed(PLAIN)}
+				{#each plain as v (v.id)}
+					{@render sessionRow(v)}
+				{:else}
+					<text class="text-xs text-muted px-sm">No plain sessions.</text>
+				{/each}
+			{/if}
 		</div>
 	{/if}
 
-	<div class="box gap-xs">
-		<div class="px-sm"><SectionLabel label="Projects" /></div>
-		{#each projects() as p (p.id)}
-			<div class="box gap-xs">
-				<div
-					class="wb-row-item row ycenter gap-sm"
-					class:wb-drop-on={dropTarget === p.id && dragging !== null}
-					hitbox="self"
-					testId={`hist-project-${tid(p.id)}`}
-					onclick={() => setCollapsed(p.id, !isCollapsed(p.id))}
-					onauxclick={(e: { isRightClick?: unknown }) => {
-						if (isRightClick(e)) menu = { kind: 'project', id: p.id };
-					}}
-					onmouseenter={() => {
-						if (dragging) dropTarget = p.id;
-					}}
-					onmouseup={endDrag}
-				>
-					<Icon name={isCollapsed(p.id) ? 'chevron-right' : 'chevron-down'} tone="muted" />
-					<Icon name="folder" tone="secondary" />
-					<div class="box grow min0">
-						<text class="nav-section-title truncate">{p.meta.name}</text>
-						<WorkspaceRow path={p.meta.path} />
-					</div>
-					{#if projectBusy(p.id)}<div class="wb-live-dot"></div>{/if}
-					<IconButton
-						icon="more-horizontal"
-						testId={`hist-project-${tid(p.id)}-more`}
-						onclick={() => (menu = menu?.id === p.id ? null : { kind: 'project', id: p.id })}
-					/>
-					<IconButton icon="plus" testId={`hist-project-${tid(p.id)}-add`} onclick={() => void newInProject(p.id)} />
-				</div>
-				{#if editing?.kind === 'project' && editing.id === p.id}
-					<input
-						class="input"
-						testId={`hist-project-${tid(p.id)}-rename`}
-						value={draft}
-						autofocus
-						onchange={(e: { value: string }) => (draft = e.value)}
-						onsubmit={commitRename}
-						onkeydown={(e: { key?: string }) => {
-							if ((e.key ?? '').toLowerCase() === 'escape') editing = null;
-						}}
-					/>
-				{/if}
-				{#if confirming?.kind === 'project' && confirming.id === p.id}
-					<div class="box gap-xs px-sm" testId={`hist-project-${tid(p.id)}-delete`}>
-						<text class="text-sm text-primary">Delete this project? Its sessions move to Sessions. No files are deleted.</text>
-						<div class="row ycenter gap-xs">
-							<Button label="Delete" variant="danger" testId={`hist-project-${tid(p.id)}-delete-yes`} onclick={commitDelete} />
-							<Button label="Cancel" variant="ghost" onclick={() => (confirming = null)} />
-						</div>
-					</div>
-				{/if}
-				{#if menu?.kind === 'project' && menu.id === p.id}
-					<ContextMenu
-						open
-						items={projectItems(p.id)}
-						onselect={(item) => void runProjectAction(p.id, item)}
-						onclose={closeMenu}
-						testId={`hist-project-${tid(p.id)}-menu`}
-					/>
-				{/if}
-				{#if !isCollapsed(p.id)}
-					{#each bucketsOf(p.id) as bucket (bucket.id)}
-						<div class="px-sm"><SectionLabel label={bucket.label} /></div>
-						{#each bucket.views as v (v.id)}
-							<div
-								class="wb-row-item row ycenter gap-sm"
-								class:active={active.surface[0] === v.id}
-								hitbox="self"
-								testId={`hist-session-${v.id}`}
-								onclick={() => void selectSession(v.id)}
-								onauxclick={(e: { isRightClick?: unknown }) => {
-									if (isRightClick(e)) menu = { kind: 'session', id: v.id };
-								}}
-								onmousedown={(e: { button?: number }) => startDrag(v.id, e)}
-							>
-								{#if isOpen(v.id)}<text class="text-sm text-secondary">○</text>{/if}
-								{#if isBusy(v.id)}<div class="wb-live-dot"></div>{/if}
-								<text class="nav-section-title grow min0 truncate">{v.meta.title}</text>
-					{#if v.meta.botId}<text class="nav-section-small shrink-0 truncate" testId={`hist-session-${v.id}-bot`}>{botIndex.bots[v.meta.botId]?.identity.name ?? ""}</text>{/if}
-								<IconButton
-									icon="more-horizontal"
-									testId={`hist-session-${v.id}-more`}
-									onclick={() => (menu = menu?.id === v.id ? null : { kind: 'session', id: v.id })}
-								/>
-							</div>
-							{#if editing?.kind === 'session' && editing.id === v.id}
-								<input
-									class="input"
-									testId={`hist-session-${v.id}-rename`}
-									value={draft}
-									autofocus
-									onchange={(e: { value: string }) => (draft = e.value)}
-									onsubmit={commitRename}
-									onkeydown={(e: { key?: string }) => {
-										if ((e.key ?? '').toLowerCase() === 'escape') editing = null;
-									}}
-								/>
-							{/if}
-							{#if confirming?.kind === 'session' && confirming.id === v.id}
-								<div class="box gap-xs px-sm" testId={`hist-session-${v.id}-delete`}>
-									<text class="text-sm text-primary">Delete this session?</text>
-									<div class="row ycenter gap-xs">
-										<Button label="Delete" variant="danger" testId={`hist-session-${v.id}-delete-yes`} onclick={commitDelete} />
-										<Button label="Cancel" variant="ghost" onclick={() => (confirming = null)} />
-									</div>
-								</div>
-							{/if}
-							{#if menu?.kind === 'session' && menu.id === v.id}
-								<ContextMenu
-									open
-									items={sessionItems(v.id)}
-									onselect={(item) => void runSessionAction(v.id, item)}
-									onclose={closeMenu}
-									testId={`hist-session-${v.id}-menu`}
-								/>
-							{/if}
-					{/each}
-					{/each}
-					{/if}
-				</div>
-			{/each}
-			<div class="box gap-xs px-sm">
-				<div class="row ycenter gap-xs">
-					<input
-						class="input grow min0"
-						testId="hist-add-input"
-						placeholder="Add project by folder path…"
-						value={addDraft}
-						onchange={(e: { value: string }) => (addDraft = e.value)}
-						onsubmit={commitAddProject}
-					/>
-					<Button label="Add" testId="hist-add" onclick={commitAddProject} />
-					<Button label="Browse" variant="ghost" testId="hist-browse" onclick={() => (pickOpen = true)} />
-				</div>
-				{#if addError}<text class="text-xs text-danger" testId="hist-add-error">{addError}</text>{/if}
-			</div>
-			{#if pickOpen}
-				<FolderPicker onchoose={commitPick} onclose={() => (pickOpen = false)} testId="hist-picker" />
-			{/if}
-		</div>
-
-	{#if archivedSessions().length || archivedProjects().length}
+	{#if archived.length}
 		<div class="box gap-xs">
-			<div
-				class="wb-row-item row ycenter gap-sm"
-				hitbox="self"
-				testId="hist-archived"
-				onclick={() => (sidebarUi.showArchived = !sidebarUi.showArchived)}
-			>
+			<div class="wb-row-item row ycenter gap-sm" hitbox="self" testId="hist-archived" onclick={() => (sidebarUi.showArchived = !sidebarUi.showArchived)}>
 				<Icon name={sidebarUi.showArchived ? 'chevron-down' : 'chevron-right'} tone="muted" />
 				<Icon name="archive" tone="secondary" />
 				<text class="nav-section-title grow truncate">Archived</text>
+				<text class="nav-section-small shrink-0">{archived.length}</text>
 			</div>
 			{#if sidebarUi.showArchived}
-				{#each archivedProjects() as p (p.id)}
-					<div
-						class="wb-row-item row ycenter gap-sm"
-						hitbox="self"
-						testId={`hist-project-${tid(p.id)}`}
-						onclick={() => setCollapsed(p.id, !isCollapsed(p.id))}
-						onauxclick={(e: { isRightClick?: unknown }) => {
-							if (isRightClick(e)) menu = { kind: 'project', id: p.id };
-						}}
-					>
-						<Icon name={isCollapsed(p.id) ? 'chevron-right' : 'chevron-down'} tone="muted" />
-						<Icon name="folder" tone="secondary" />
-						<text class="nav-section-title grow min0 truncate">{p.meta.name}</text>
-						<IconButton
-							icon="more-horizontal"
-							testId={`hist-project-${tid(p.id)}-more`}
-							onclick={() => (menu = menu?.id === p.id ? null : { kind: 'project', id: p.id })}
-						/>
-					</div>
-					{#if menu?.kind === 'project' && menu.id === p.id}
-						<ContextMenu
-							open
-							items={projectItems(p.id)}
-							onselect={(item) => void runProjectAction(p.id, item)}
-							onclose={closeMenu}
-							testId={`hist-project-${tid(p.id)}-menu`}
-						/>
-					{/if}
-					{#if !isCollapsed(p.id)}
-						{#each inProject(p.id) as v (v.id)}
-							<div
-								class="wb-row-item row ycenter gap-sm"
-								hitbox="self"
-								testId={`hist-session-${v.id}`}
-								onclick={() => void selectSession(v.id)}
-								onauxclick={(e: { isRightClick?: unknown }) => {
-									if (isRightClick(e)) menu = { kind: 'session', id: v.id };
-								}}
-							>
-								<text class="nav-section-title grow min0 truncate">{v.meta.title}</text>
-					{#if v.meta.botId}<text class="nav-section-small shrink-0 truncate" testId={`hist-session-${v.id}-bot`}>{botIndex.bots[v.meta.botId]?.identity.name ?? ""}</text>{/if}
-								<IconButton
-									icon="more-horizontal"
-									testId={`hist-session-${v.id}-more`}
-									onclick={() => (menu = menu?.id === v.id ? null : { kind: 'session', id: v.id })}
-								/>
-							</div>
-							{#if menu?.kind === 'session' && menu.id === v.id}
-								<ContextMenu
-									open
-									items={sessionItems(v.id)}
-									onselect={(item) => void runSessionAction(v.id, item)}
-									onclose={closeMenu}
-									testId={`hist-session-${v.id}-menu`}
-								/>
-							{/if}
-						{/each}
-					{/if}
-				{/each}
-				{#each archivedSessions() as v (v.id)}
-					<div
-						class="wb-row-item row ycenter gap-sm"
-						hitbox="self"
-						testId={`hist-session-${v.id}`}
-						onclick={() => void selectSession(v.id)}
-						onauxclick={(e: { isRightClick?: unknown }) => {
-							if (isRightClick(e)) menu = { kind: 'session', id: v.id };
-						}}
-					>
-						<text class="nav-section-title grow min0 truncate">{v.meta.title}</text>
-					{#if v.meta.botId}<text class="nav-section-small shrink-0 truncate" testId={`hist-session-${v.id}-bot`}>{botIndex.bots[v.meta.botId]?.identity.name ?? ""}</text>{/if}
-						<IconButton
-							icon="more-horizontal"
-							testId={`hist-session-${v.id}-more`}
-							onclick={() => (menu = menu?.id === v.id ? null : { kind: 'session', id: v.id })}
-						/>
-					</div>
-					{#if menu?.kind === 'session' && menu.id === v.id}
-						<ContextMenu
-							open
-							items={sessionItems(v.id)}
-							onselect={(item) => void runSessionAction(v.id, item)}
-							onclose={closeMenu}
-							testId={`hist-session-${v.id}-menu`}
-						/>
-					{/if}
+				{#each archived as v (v.id)}
+					{@render sessionRow(v)}
 				{/each}
 			{/if}
 		</div>
 	{/if}
 </div>
+
+{#if moving}
+	<Modal title="Move to bot" onclose={() => (moving = null)} testId="hist-move">
+		<div class="box gap-xs">
+			{#each bots as { id, bot } (id)}
+				<div class="wb-row-item row ycenter gap-sm" hitbox="self" testId={`hist-move-${tid(id)}`} onclick={() => void commitMove(id)}>
+					<Avatar {id} name={bot.identity.name} avatar={bot.avatar} />
+					<text class="nav-section-title grow min0 truncate">{bot.identity.name}</text>
+					{#if sessionMeta(moving)?.botId === id}<Icon name="check" tone="muted" />{/if}
+				</div>
+			{/each}
+			<div class="wb-row-item row ycenter gap-sm" hitbox="self" testId="hist-move-none" onclick={() => void commitMove(null)}>
+				<Icon name="message-square" tone="secondary" />
+				<text class="nav-section-title grow min0 truncate">No bot (plain session)</text>
+				{#if !sessionMeta(moving)?.botId}<Icon name="check" tone="muted" />{/if}
+			</div>
+		</div>
+	</Modal>
+{/if}
+
+{#if confirming}
+	<Modal title="Delete this chat?" onclose={() => (confirming = null)} testId="hist-delete" footer={deleteFoot}>
+		<text class="text-sm text-primary">{labelOf(confirming)} and its messages will be removed. This cannot be undone.</text>
+	</Modal>
+{/if}
+
+{#snippet deleteFoot()}
+	<Button label="Cancel" variant="ghost" testId="hist-delete-cancel" onclick={() => (confirming = null)} />
+	<Button label="Delete" variant="danger" testId="hist-delete-yes" onclick={commitDelete} />
+{/snippet}

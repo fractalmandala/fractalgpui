@@ -1,22 +1,23 @@
 import { persisted } from '../../kernel/storage.svelte.ts';
 
 /**
- * Sidebar history chrome: per-project collapse and the Archived group,
- * persisted across restarts (§1.3, §1.10). Selection itself lives in
- * `session.svelte.ts` (`active`). Projects start expanded.
+ * Chats list chrome, persisted across restarts: which groups (a bot id, or `plain`) are collapsed and whether
+ * the Archived group is open. Selection itself lives in `session.svelte.ts` (`active`). Groups start expanded.
  */
+export const PLAIN = 'plain';
+
 export const sidebarUi = persisted('pi-history-ui', {
 	collapsed: {} as Record<string, boolean>,
 	showArchived: false
 });
 
-export function isCollapsed(projectId: string): boolean {
-	return sidebarUi.collapsed[projectId] === true;
+export function isCollapsed(group: string): boolean {
+	return sidebarUi.collapsed[group] === true;
 }
 
-export function setCollapsed(projectId: string, collapsed: boolean) {
+export function setCollapsed(group: string, collapsed: boolean) {
 	const next = { ...sidebarUi.collapsed };
-	if (collapsed) next[projectId] = true;
-	else delete next[projectId];
+	if (collapsed) next[group] = true;
+	else delete next[group];
 	sidebarUi.collapsed = next;
 }

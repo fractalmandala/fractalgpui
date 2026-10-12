@@ -61,7 +61,7 @@ export function segments(dir: string): { label: string; path: string }[] {
 	return out;
 }
 
-/** Validate a typed candidate the way `addProject` will: absolute, a directory. */
+/** Validate a typed candidate as a working folder needs: absolute, a directory. */
 export function checkDirInput(raw: string): { path: string; error: string | null } {
 	const clean = raw.trim();
 	if (!clean) return { path: '', error: 'Type a folder path or browse to one.' };
