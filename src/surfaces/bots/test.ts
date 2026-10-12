@@ -6,6 +6,9 @@ import { dock } from '../../kernel/dock/dock.svelte.ts';
 import { find_view } from '../../kernel/dock/tree.ts';
 import { ensureActive, mainChat } from '../agents/session.svelte.ts';
 import { assignSession, botIndex, sessionMeta } from '../../kernel/pi/sessions.svelte.ts';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { catalogDirs } from '../../kernel/pi/bots/catalog.ts';
 import { bots_ui, botList, editor } from './state.svelte.ts';
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -65,10 +68,41 @@ click_test_id('be-confirm');
 check('confirming writes the change', await until(() => !!botIndex.bots[id]?.character.traits.includes('curious')), true);
 
 // sections render
-for (const s of ['roles', 'capabilities', 'models', 'memory', 'activity', 'json']) {
+for (const s of ['roles', 'plugins', 'capabilities', 'models', 'memory', 'activity', 'json']) {
 	click_test_id(`be-tabs-${s}`);
 	check(`the ${s} section renders`, !!find_test_id(`sec-${s}`));
 }
+// roles: empty state explains the folder; templates come only from files the user drops in
+click_test_id('be-tabs-roles');
+check('with no files the roles catalog explains where to put them', !!find_test_id('ro-empty') && painted().includes('SKILL.md'), true);
+const dirs = catalogDirs();
+mkdirSync(join(dirs.rolesDir, 'auditor'), { recursive: true });
+writeFileSync(join(dirs.rolesDir, 'auditor', 'SKILL.md'), '---\nname: Auditor\ndescription: Checks things\n---\nAlways list risks first.');
+click_test_id('ro-reload');
+check('Reload shows the role from the folder', await until(() => !!find_test_id('ro-cat-auditor')), true);
+click_test_id('ro-view-auditor');
+check('View shows the role content', await until(() => painted().includes('Always list risks first.')), true);
+click_test_id('ro-assign-auditor');
+check('Assign puts it on the bot (draft)', await until(() => !!find_test_id('ro-held-auditor') && editor.draft?.roles === 'auditor'), true);
+click_test_id('be-save');
+await until(() => !!find_test_id('be-diff'));
+click_test_id('be-confirm');
+check('saving stores the role on the bot', await until(() => botIndex.bots[id]?.roles.includes('auditor') ?? false), true);
+// plugins: listed from the plugins folder, enabled per bot, MCP servers listed only
+click_test_id('be-tabs-plugins');
+check('with no plugins the empty state explains the layout', !!find_test_id('pl-empty') && painted().includes('plugin.json'), true);
+const pd = join(dirs.pluginsDir, 'rep');
+mkdirSync(join(pd, 'skills', 'sum'), { recursive: true });
+writeFileSync(join(pd, 'plugin.json'), JSON.stringify({ $schema: 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json', name: 'Reports', version: '1.0.0' }));
+writeFileSync(join(pd, 'skills', 'sum', 'SKILL.md'), '---\nname: sum\ndescription: Summarize\n---\nBullets.');
+writeFileSync(join(pd, 'mcp.json'), JSON.stringify({ $schema: 'https://agent-plugins.org/schemas/1.0.0/mcp.schema.json', mcpServers: { db: { type: 'stdio', command: 'db' } } }));
+click_test_id('pl-reload');
+check('Reload lists the plugin with its MCP servers', await until(() => !!find_test_id('pl-rep') && !!find_test_id('pl-mcp-rep')), true);
+click_test_id('pl-toggle-rep');
+click_test_id('be-save');
+await until(() => !!find_test_id('be-diff'));
+click_test_id('be-confirm');
+check('enabling and saving stores the plugin on the bot', await until(() => botIndex.bots[id]?.plugins?.includes('rep') ?? false), true);
 // the workspace folder is chosen with the folder picker in Capabilities (botroom by default)
 click_test_id('be-tabs-capabilities');
 check('capabilities shows the workspace, botroom by default', !!find_test_id('cap-workspace') && painted().includes('(botroom)'), true);
@@ -102,4 +136,4 @@ check('a session can be detached', sessionMeta(key)?.botId ?? null, null);
 await assignSession(Number(key) as never, id);
 check('and moved to a bot', sessionMeta(key)?.botId, id);
 
-finish('bots', 31);
+finish('bots', 40);

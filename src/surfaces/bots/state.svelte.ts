@@ -19,11 +19,12 @@ import { persisted } from '../../kernel/storage.svelte.ts';
 import { selectSession } from '../agents/session.svelte.ts';
 import { draftOf, patchOf, type BotDraft } from './draft.ts';
 
-export type Section = 'identity' | 'character' | 'roles' | 'capabilities' | 'models' | 'memory' | 'activity' | 'json';
+export type Section = 'identity' | 'character' | 'roles' | 'plugins' | 'capabilities' | 'models' | 'memory' | 'activity' | 'json';
 export const SECTIONS: { id: Section; label: string }[] = [
 	{ id: 'identity', label: 'Identity' },
 	{ id: 'character', label: 'Character' },
 	{ id: 'roles', label: 'Roles' },
+	{ id: 'plugins', label: 'Plugins' },
 	{ id: 'capabilities', label: 'Capabilities' },
 	{ id: 'models', label: 'Models' },
 	{ id: 'memory', label: 'Memory' },

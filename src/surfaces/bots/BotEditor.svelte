@@ -11,6 +11,7 @@
 	import Memory from './sections/Memory.svelte';
 	import Models from './sections/Models.svelte';
 	import Roles from './sections/Roles.svelte';
+	import Plugins from './sections/Plugins.svelte';
 	import { showValue } from './draft.ts';
 	import {
 		bots_ui,
@@ -81,6 +82,7 @@
 			{#if section === 'identity'}<Identity />
 			{:else if section === 'character'}<Character />
 			{:else if section === 'roles'}<Roles />
+			{:else if section === 'plugins'}<Plugins />
 			{:else if section === 'capabilities'}<Capabilities />
 			{:else if section === 'models'}<Models />
 			{:else if section === 'memory'}<Memory />

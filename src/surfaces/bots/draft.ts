@@ -17,6 +17,8 @@ export interface BotDraft {
 	notes: string;
 	/** Comma-separated role ids. */
 	roles: string;
+	/** Comma-separated enabled plugin ids. */
+	plugins: string;
 	capabilities: Capabilities;
 	memory: MemoryConfig;
 	/** Folder path; empty = the bot's botroom. */
@@ -35,6 +37,7 @@ export function draftOf(bot: BotMeta): BotDraft {
 		addressUserAs: bot.character.addressUserAs,
 		notes: bot.character.notes,
 		roles: bot.roles.join(', '),
+		plugins: (bot.plugins ?? []).join(', '),
 		capabilities: { ...bot.capabilities },
 		memory: { ...bot.memory },
 		workspace: bot.workspaceIsBotroom ? '' : bot.workspace,
@@ -56,6 +59,7 @@ export function patchOf(bot: BotMeta, d: BotDraft): BotPatch {
 	if (d.notes !== base.notes) character.notes = d.notes;
 	if (Object.keys(character).length) patch.character = character;
 	if (!same(splitList(d.roles), bot.roles)) patch.roles = splitList(d.roles);
+	if (!same(splitList(d.plugins), bot.plugins ?? [])) patch.plugins = splitList(d.plugins);
 	if (!same(d.capabilities, base.capabilities)) patch.capabilities = { ...d.capabilities };
 	if (!same(d.memory, base.memory)) patch.memory = { ...d.memory };
 	if (d.workspace.trim() !== base.workspace) patch.workspace = d.workspace.trim() || null;
