@@ -1,6 +1,6 @@
 # PLAN — merging pibots into fractalgpui
 
-Branch: `feat/pibots-merge`. Decision made: fractalgpui is the app; pibots' TypeScript harness
+Branch: `main` (single branch). Decision made: fractalgpui is the app; pibots' TypeScript harness
 (`github.com/fractalmandala/pibots`, `harness/src`) moves in as in-process kernel modules; pibots' Rust/GPUI UI
 and its unix-socket protocol are retired. Status of this document: updated after Stage 2 (see **Status** below).
 
@@ -12,6 +12,7 @@ and its unix-socket protocol are retired. Status of this document: updated after
 | 1 Data model | DONE: `bots/meta.ts` (`fractal.bots`, versioned `BotMeta`, ids `bot_<10 base36>`, avatar fallback, diff), `bots/paths.ts` (botroom + per-bot home), `bots/store.ts` (create / `updateBot` patch→diff with `dryRun` / confirmed `setIdentity` / duplicate / delete keeps sessions and detaches / list / `watchBots`), `SessionMeta.botId?`, `createSession(..., {botId})` |
 | 4 Browser | DONE: `kernel/pi/browser.ts` (lazy optional Playwright, per-bot persistent profile, headed/headless, install-on-demand into `<data>/playwright`), `bots/browser-tools.ts` + `fractal-browser` extension (guarded like file tools), Browser dock view. Screenshots are files in the bot media folder; transcript never holds bytes. Not verified: live in-window Playwright, `<img>` refresh on screen |
 | 5 Models & usage | DONE: kept-models-only picker (`kept.ts`), env-detected providers + ignore, key files `<data>/keys/<provider>.key` 0600 or `env:NAME`, Models & providers dock view, usage panel + `windows.ts` (OpenRouter `/key`; header parser not wired to live requests; others say unavailable) |
+| 3b Chats list | DONE: the old Sessions/Projects sidebar is replaced by a bot-first Chats view (each bot expands to its chats with New chat; Plain sessions; Archived). The project registry (`projects`, `projectId`, add/rename/pin/archive/remove project, drag-to-project) is deleted; a plain session has an optional `folder` (composer), a bot session works in its bot's workspace (set in the bot editor, Capabilities, with the folder picker). Old stores are upgraded on open (`dropLegacyProjects`: a session keeps its project folder as `folder`). Rows show a real title or the start date/time (never identical), plus the updated time; Move to bot and Delete are dialogs |
 | 2 Kernel move | DONE for audit, caps, destructive detector, personality, profile, temporal memory, bot wiring. NOT ported yet: `tools-fs.ts` (not in this slice), `disk.ts`, browser, usage windows, provider-policy deltas (Stages 3-5) |
 
 Decisions made while building (all revisitable):
