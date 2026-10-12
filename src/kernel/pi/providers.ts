@@ -47,11 +47,20 @@ const KEY_ENV: Record<string, string> = {
 /** The documented variable for a provider, or null when it has none. */
 export const keyEnvFor = (providerId: string): string | null => KEY_ENV[providerId] ?? null;
 
-/** The variable when it currently holds a key, else undefined. */
+/**
+ * Variables this app set itself from a stored key (so the runtime sees the key). They must not be mistaken for a
+ * key the user exported: `envKeyFor` treats a variable still holding exactly our value as "not from the environment".
+ */
+const ownEnv = new Map<string, string>();
+export const markOwnEnv = (name: string, value: string | undefined) => (value === undefined ? ownEnv.delete(name) : void ownEnv.set(name, value));
+
+/** The variable when it currently holds a key the USER put there, else undefined. */
 export function envKeyFor(providerId: string): string | undefined {
 	const name = keyEnvFor(providerId);
 	if (!name) return undefined;
-	return (process.env[name] ?? '').trim() ? name : undefined;
+	const v = (process.env[name] ?? '').trim();
+	if (!v) return undefined;
+	return ownEnv.get(name) === v ? undefined : name;
 }
 
 export const maskKey = (key: string): string => `••••${key.slice(-4)}`;

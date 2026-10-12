@@ -4,7 +4,7 @@ import { openNodeSqliteStorage } from '@earendil-works/pi-durable/storage/sqlite
 import { NodeExecutionEnv } from '@earendil-works/pi-durable/env/node';
 import { join } from 'node:path';
 import { data_dir } from '../paths.ts';
-import { buildModels, injectStoredKeys, isTestEnv, modelDefaults } from './models.ts';
+import { buildModels, injectStoredKeys, isTestEnv, resolveDefault } from './models.ts';
 import { freshSession, SessionsDoc } from './metadata.ts';
 import { DEFAULT_EXTENSIONS, installAgentTools, installBotTools } from './tools.ts';
 import { botRuntime } from './bots/extension.ts';
@@ -34,6 +34,7 @@ export async function openHarness(): Promise<HarnessType> {
 			installAgentTools(registry);
 			installBotTools(registry);
 			botRuntime.models = piModels;
+			const seed = resolveDefault(piModels());
 			const h = await Harness.open(
 				storage,
 				{
@@ -52,7 +53,7 @@ export async function openHarness(): Promise<HarnessType> {
 						try {
 							const d = await tx.doc(SessionsDoc);
 							const id = String(conversation.id);
-							if (!d.sessions[id]) d.sessions[id] = freshSession(null, Date.now(), modelDefaults.provider, modelDefaults.modelId);
+							if (!d.sessions[id]) d.sessions[id] = freshSession(null, Date.now(), seed.provider, seed.modelId);
 						} catch (err) {
 							console.warn(`[fractalgpui] session index seed failed: ${(err as Error).message}`);
 						}

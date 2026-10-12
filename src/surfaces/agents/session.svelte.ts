@@ -6,7 +6,7 @@ import { getSupportedThinkingLevels } from '@earendil-works/pi-ai/models';
 import { persisted } from '../../kernel/storage.svelte.ts';
 import { flash } from '../../kernel/status.svelte.ts';
 import { openHarness, pi_context, piModels } from '../../kernel/pi/harness.svelte.ts';
-import { DEFAULT_MODEL, isTestEnv, keyStatus, modelDefaults } from '../../kernel/pi/models.ts';
+import { firstKeptOf, isTestEnv, keyStatus, resolveDefault } from '../../kernel/pi/models.ts';
 import { formatUsage, isBusy, projectEntries, type ChatRow } from '../../kernel/pi/project.ts';
 import { deriveTitle, mayDeriveTitle, SessionsDoc, type AccessMode, type AgentType } from '../../kernel/pi/metadata.ts';
 import { contextFigures, countToolCalls, createSpeedTracker, providerFigures, toolFigures, type UsageBuckets } from '../../kernel/pi/usage.ts';
@@ -105,7 +105,7 @@ export class AgentChat {
 	set provider(id: string) {
 		if (!piModels().getProvider(id)) return;
 		this._provider = id;
-		this._modelId = DEFAULT_MODEL[id] ?? this._modelId;
+		this._modelId = firstKeptOf(piModels(), id) ?? this._modelId;
 		void this.persistModel();
 		void this.reconfigure();
 	}
@@ -593,7 +593,7 @@ export const view = $state<{ surface: AgentChat | null; panel: AgentChat | null 
 export const uiReady = $state({ current: false });
 
 function defaults(): ModelRef {
-	return { provider: modelDefaults.provider, modelId: modelDefaults.modelId };
+	return resolveDefault(piModels());
 }
 
 export async function openSessionChat(id: string): Promise<AgentChat> {

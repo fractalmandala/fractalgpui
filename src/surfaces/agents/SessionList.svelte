@@ -10,7 +10,8 @@
 	import { flash } from '../../kernel/status.svelte.ts';
 	import { agentDbPath } from '../../kernel/pi/sessions-sql.ts';
 	import { copy_text as copy } from '../../kernel/clipboard.ts';
-	import { modelDefaults } from '../../kernel/pi/models.ts';
+	import { resolveDefault } from '../../kernel/pi/models.ts';
+	import { piModels } from '../../kernel/pi/harness.svelte.ts';
 	import {
 		classifyBucket,
 		orderProjects,
@@ -282,7 +283,7 @@
 
 	async function newInProject(pid: string | null) {
 		try {
-			const id = await createSession(pid, { provider: modelDefaults.provider, modelId: modelDefaults.modelId });
+			const id = await createSession(pid, resolveDefault(piModels()));
 			await selectSession(String(id));
 		} catch (err) {
 			flash(`That didn't work: ${(err as Error).message}`, 'danger');

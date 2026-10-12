@@ -1,5 +1,5 @@
-import { openHarness } from './harness.svelte.ts';
-import { isTestEnv, modelDefaults } from './models.ts';
+import { openHarness, piModels } from './harness.svelte.ts';
+import { isTestEnv, resolveDefault } from './models.ts';
 import {
 	backfillSessions,
 	addProject as ioAddProject,
@@ -50,7 +50,7 @@ async function harness(): Promise<Harness> {
 			await ioEnsure(h, (next) => {
 				index.sessions = next.sessions;
 				index.projects = next.projects;
-			}, modelDefaults);
+			}, resolveDefault(piModels()));
 			await watchBots(h, (next) => {
 				botIndex.bots = next.bots;
 			});

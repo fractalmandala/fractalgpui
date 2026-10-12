@@ -11,7 +11,8 @@ import { AuditLog, type AuditRow } from '../../kernel/pi/audit.ts';
 import type { BotMeta, DiffEntry } from '../../kernel/pi/bots/meta.ts';
 import { botPaths } from '../../kernel/pi/bots/paths.ts';
 import { createBot, deleteBot, duplicateBot, setIdentity, updateBot } from '../../kernel/pi/bots/store.ts';
-import { modelDefaults } from '../../kernel/pi/models.ts';
+import { resolveDefault } from '../../kernel/pi/models.ts';
+import { piModels } from '../../kernel/pi/harness.svelte.ts';
 import { botIndex, createSession, index, sessionHarness } from '../../kernel/pi/sessions.svelte.ts';
 import { flash } from '../../kernel/status.svelte.ts';
 import { persisted } from '../../kernel/storage.svelte.ts';
@@ -198,7 +199,7 @@ export async function remove(id: string) {
 /** Start a chat with this bot in its botroom (or assigned workspace). */
 export async function chatWith(id: string) {
 	try {
-		const sid = await createSession(null, { provider: modelDefaults.provider, modelId: modelDefaults.modelId }, { botId: id });
+		const sid = await createSession(null, resolveDefault(piModels()), { botId: id });
 		await selectSession(String(sid as ConversationId));
 		open_view('chat');
 	} catch (err) {
