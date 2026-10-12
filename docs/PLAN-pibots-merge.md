@@ -10,6 +10,8 @@ and its unix-socket protocol are retired. Status of this document: updated after
 |---|---|
 | 0 Playwright under Bun | DONE |
 | 1 Data model | DONE: `bots/meta.ts` (`fractal.bots`, versioned `BotMeta`, ids `bot_<10 base36>`, avatar fallback, diff), `bots/paths.ts` (botroom + per-bot home), `bots/store.ts` (create / `updateBot` patch→diff with `dryRun` / confirmed `setIdentity` / duplicate / delete keeps sessions and detaches / list / `watchBots`), `SessionMeta.botId?`, `createSession(..., {botId})` |
+| 4 Browser | DONE: `kernel/pi/browser.ts` (lazy optional Playwright, per-bot persistent profile, headed/headless, install-on-demand into `<data>/playwright`), `bots/browser-tools.ts` + `fractal-browser` extension (guarded like file tools), Browser dock view. Screenshots are files in the bot media folder; transcript never holds bytes. Not verified: live in-window Playwright, `<img>` refresh on screen |
+| 5 Models & usage | DONE: kept-models-only picker (`kept.ts`), env-detected providers + ignore, key files `<data>/keys/<provider>.key` 0600 or `env:NAME`, Models & providers dock view, usage panel + `windows.ts` (OpenRouter `/key`; header parser not wired to live requests; others say unavailable) |
 | 2 Kernel move | DONE for audit, caps, destructive detector, personality, profile, temporal memory, bot wiring. NOT ported yet: `tools-fs.ts` (not in this slice), `disk.ts`, browser, usage windows, provider-policy deltas (Stages 3-5) |
 
 Decisions made while building (all revisitable):

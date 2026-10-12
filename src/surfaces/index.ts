@@ -7,10 +7,12 @@
 import type { View } from '../kernel/types.ts';
 import agents from './agents/index.ts';
 import bots from './bots/index.ts';
+import browser from './browser/index.ts';
+import models from './models/index.ts';
 import settings from './settings/index.ts';
 import tools from './tools/index.ts';
 
 const [chat, sessions, side] = agents;
 
-/** ⌘1 chat, ⌘2 sessions, ⌘3 bots, ⌘4 bot editor, ⌘5 tools, ⌘6 settings, ⌘7 side chat. */
-export const VIEWS: View[] = [chat, sessions, ...bots, tools, settings, side];
+/** ⌘1 chat, ⌘2 sessions, ⌘3 bots, ⌘4 bot editor, ⌘5 browser, ⌘6 models, ⌘7 tools, ⌘8 settings, ⌘9 side chat. */
+export const VIEWS: View[] = [chat, sessions, ...bots, browser, models, tools, settings, side];

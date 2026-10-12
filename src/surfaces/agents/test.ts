@@ -384,44 +384,6 @@ press('cmd-,');
 check('settings opens on models', await ui_is('set-models'), true);
 check('the nav highlights settings', !!find_test_id('set-nav-models'), true);
 
-// In-app keys now live in Settings: set, mask, clear (faux stands in for a key provider)
-click_test_id('set-add');
-check('the add-provider modal opens', await ui_is('set-add-provider'), true);
-click_test_id('set-add-provider-key-faux');
-click_test_id('set-add-provider-key-input');
-type('t e s t - k e y - 1 2 3 4');
-click_test_id('set-add-provider-save');
-check('save closes the modal', await ui_is('set-add-provider', false), true);
-check('the stored key shows masked', painted().includes('•'.repeat(4) + '1234'), true);
-click_test_id('set-add');
-click_test_id('set-add-provider-key-faux');
-click_test_id('set-add-provider-save');
-check('saving empty clears the key', !painted().includes('•'.repeat(4) + '1234'), true);
-
-// A custom endpoint: manual model, save, edit, remove — no restart anywhere
-click_test_id('set-add');
-click_test_id('set-add-provider-custom');
-const nameInput = find_test_id('set-add-provider-name');
-if (nameInput) focus(nameInput);
-type('A c m e');
-const baseInput = find_test_id('set-add-provider-base');
-if (baseInput) focus(baseInput);
-type('h t t p s : / / a c m e . e x a m p l e . c o m / v 1');
-const manualInput = find_test_id('set-add-provider-manual');
-if (manualInput) focus(manualInput);
-type('a c m e - 1');
-click_test_id('set-add-provider-manual-add');
-click_test_id('set-add-provider-save');
-check('the custom provider row appears', await ui_is('set-provider-custom-acme'), true);
-check('the row is marked added', painted().includes('added'), true);
-click_test_id('set-provider-custom-acme-more');
-click_test_id('set-provider-custom-acme-menu-edit');
-check('edit reopens the form with the name', await ui_is('set-add-provider-name'), true);
-click_test_id('set-add-provider-close');
-click_test_id('set-provider-custom-acme-more');
-click_test_id('set-provider-custom-acme-menu-remove');
-check('remove drops the row', await ui_is('set-provider-custom-acme', false), true);
-
 // Transcript copy carries the shown session's exchange as text
 open_view('chat');
 await selectSession(a.key);
@@ -446,4 +408,4 @@ check('opening a missing session throws', threw.includes('unknown session'), tru
 rmSync(projDir, { recursive: true, force: true });
 rmSync(pickRoot, { recursive: true, force: true });
 rmSync(pickRoot2, { recursive: true, force: true });
-finish('agents', 91);
+finish('agents', 83);

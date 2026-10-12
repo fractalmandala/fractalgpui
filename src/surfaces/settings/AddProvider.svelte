@@ -11,6 +11,8 @@
 	import { piModels } from '../../kernel/pi/harness.svelte.ts';
 	import {
 		credentialBag,
+		keepModel,
+		keysFolder,
 		loginSubscription,
 		maskedKey,
 		saveCustomProvider,
@@ -114,7 +116,7 @@
 			return;
 		}
 		saveKey(keyId, keyDraft);
-		flash(`${keyName} key saved in this app`, 'success');
+		flash(`${keyName} key saved to ${keysFolder()}/${keyId}.key. Now keep some of its models in Models & providers.`, 'success', 6000);
 		onclose();
 	}
 
@@ -199,7 +201,8 @@
 			return;
 		}
 		if (customKey.trim()) saveKey(def.id, customKey);
-		flash(`${name} saved — its models are available now`, 'success');
+		for (const m of chosen) keepModel(def.id, m);
+		flash(`${name} saved. ${chosen.length} model${chosen.length === 1 ? '' : 's'} kept and ready to pick.`, 'success');
 		onclose();
 	}
 
@@ -333,7 +336,7 @@
 	{:else if stage === 'key'}
 		<div class="box gap-xs">
 			<text class="text-sm text-primary">{keyName}</text>
-			<text class="text-xs text-muted">Stored in this app's settings file{keyEnv ? `; ${keyEnv} still wins when exported` : ''}.</text>
+			<text class="text-xs text-muted">Stored as a key file in {keysFolder()} (owner-only){keyEnv ? `; ${keyEnv} still wins when exported` : ''}.</text>
 			{#if stored().kind === 'stored'}<text class="text-xs text-muted">Current: {stored().kind === 'stored' ? (stored() as { masked: string }).masked : ''}</text>{/if}
 			<input
 				class="input"
@@ -364,7 +367,7 @@
 			</div>
 			<div class="box gap-xs">
 				<text class="text-xs text-muted">API key</text>
-				<input class="input" testId={`${testId}-key-input`} placeholder="Stored in this app" value={customKey} onchange={(e: { value: string }) => (customKey = e.value)} />
+				<input class="input" testId={`${testId}-key-input`} placeholder="Stored as a key file (owner-only)" value={customKey} onchange={(e: { value: string }) => (customKey = e.value)} />
 			</div>
 			<div class="box gap-xs">
 				<text class="text-xs text-muted">API format</text>

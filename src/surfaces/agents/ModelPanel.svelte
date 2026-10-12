@@ -1,12 +1,13 @@
 <script lang="ts">
 	import { piModels } from '../../kernel/pi/harness.svelte.ts';
-	import { isProviderEnabled, keyStatus } from '../../kernel/pi/models.ts';
+	import { keptModels } from '../../kernel/pi/models.ts';
+	import { open_view } from '../../kernel/dock/dock.svelte.ts';
+	import Button from '../../ui/Button.svelte';
 	import Icon from '../../ui/Icon.svelte';
 	import SearchInput from '../../ui/SearchInput.svelte';
 
-	// The model picker (§3.2): searchable, grouped by provider in catalog
-	// order, with context sizes and capability glyphs. Disabled providers are
-	// hidden (§7.4); unconfigured ones are marked, not hidden (§3.3).
+	// The model picker: ONLY models you kept (Models & providers), searchable, grouped by provider,
+	// with context sizes and capability glyphs. Providers without a key are marked, not hidden.
 	let {
 		provider,
 		modelId,
@@ -49,31 +50,19 @@
 	function rows(): Row[] {
 		const q = query.trim().toLowerCase();
 		const out: Row[] = [];
-		for (const p of piModels().getProviders()) {
-			if (!isProviderEnabled(p.id)) continue;
-			let models: { id: string; name?: string; contextWindow?: number; input?: readonly string[]; reasoning?: boolean }[] = [];
-			try {
-				models = piModels().getModels(p.id) as unknown as typeof models;
-			} catch {
-				continue;
-			}
-			const name = p.name ?? p.id;
-			const unconfigured = !keyStatus(p.id).ok;
-			for (const m of models) {
-				const label = m.name ?? m.id;
-				if (q && !label.toLowerCase().includes(q) && !name.toLowerCase().includes(q)) continue;
-				out.push({
-					provider: p.id,
-					providerName: name,
-					unconfigured,
-					id: m.id,
-					name: label,
-					context: typeof m.contextWindow === 'number' ? compactSize(m.contextWindow) : '—',
-					images: m.input?.includes('image') ?? false,
-					reasoning: m.reasoning ?? false,
-					current: p.id === provider && m.id === modelId
-				});
-			}
+		for (const m of keptModels(piModels())) {
+			if (q && !m.name.toLowerCase().includes(q) && !m.providerName.toLowerCase().includes(q)) continue;
+			out.push({
+				provider: m.provider,
+				providerName: m.providerName,
+				unconfigured: m.unavailable === 'no key',
+				id: m.id,
+				name: m.name,
+				context: m.contextWindow !== null ? compactSize(m.contextWindow) : '—',
+				images: m.images,
+				reasoning: m.reasoning,
+				current: m.provider === provider && m.id === modelId
+			});
 		}
 		return out;
 	}
@@ -151,7 +140,10 @@
 				</div>
 			{/each}
 		{:else}
-			<div class="row ycenter px-sm h-md"><text class="text-sm text-muted">No models match</text></div>
+			<div class="box gap-xs px-sm" testId={`${testId}-empty`}>
+				<text class="text-sm text-muted">{query.trim() ? 'No kept model matches' : 'No kept models yet. Keep the models you want in Models & providers.'}</text>
+				{#if !query.trim()}<Button label="Open Models & providers" testId={`${testId}-open-models`} onclick={() => { onclose(); open_view('models'); }} />{/if}
+			</div>
 		{/each}
 		{#if allRows.length > visible.length}
 			<div class="row ycenter px-sm"><text class="text-xs text-muted">…and {allRows.length - visible.length} more — type in Search to narrow.</text></div>

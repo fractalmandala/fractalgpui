@@ -1,6 +1,7 @@
 <script lang="ts">
 	import ModelPanel from '../../agents/ModelPanel.svelte';
-	import { modelDefaults } from '../../../kernel/pi/models.ts';
+	import { resolveDefault } from '../../../kernel/pi/models.ts';
+	import { piModels } from '../../../kernel/pi/harness.svelte.ts';
 	import Button from '../../../ui/Button.svelte';
 	import { splitModel } from '../draft.ts';
 	import { editor } from '../state.svelte.ts';
@@ -10,14 +11,15 @@
 	// own model", or pick a cheaper or faster one here.
 	const ref = $derived(editor.draft?.memory.summaryModel ?? '');
 	const parts = $derived(splitModel(ref));
+	const dflt = $derived(resolveDefault(piModels()));
 </script>
 
 {#if editor.draft}
 	<div class="box gap-md" testId="sec-models">
 		<div class="box gap-xs">
 			<text class="wb-label">New sessions start on</text>
-			<text class="text-sm text-secondary" testId="mo-default">{modelDefaults.provider}/{modelDefaults.modelId}</text>
-			<text class="text-xs text-muted">Change the default in Settings → Agent &amp; models; change one session's model from its chat.</text>
+			<text class="text-sm text-secondary" testId="mo-default">{dflt.provider ? `${dflt.provider}/${dflt.modelId}` : 'no model kept yet'}</text>
+			<text class="text-xs text-muted">Keep models and pick the default in Models &amp; providers; change one session's model from its chat.</text>
 		</div>
 		<div class="box gap-xs">
 			<text class="wb-label">Memory model (summaries)</text>
@@ -29,8 +31,8 @@
 		</div>
 		{#if editor.pickingModel}
 			<ModelPanel
-				provider={parts?.provider ?? modelDefaults.provider}
-				modelId={parts?.modelId ?? modelDefaults.modelId}
+				provider={parts?.provider ?? dflt.provider}
+				modelId={parts?.modelId ?? dflt.modelId}
 				testId="mo-panel"
 				onselect={(p, m) => {
 					if (editor.draft) editor.draft.memory.summaryModel = `${p}/${m}`;
