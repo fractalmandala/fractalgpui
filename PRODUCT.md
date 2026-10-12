@@ -19,13 +19,13 @@ stays and is extended here.
 The app needs some essential features and it is time to start building them:
 
 1. Currently, it has no right-click menus. The host renderer forwards no `contextmenu` event. Every reference context menu is opened by an explicit overflow button instead. Building context menu is prerequisite one.
-2. The host exposes `setWindowTitle`, `activateWindow`, `blur` and `focusElement` — no native folder picker (proposed upstream as `remorses/gpuix#82`). Until it lands, picking a folder is an in-app dialog (`ui/FolderPicker.svelte`: breadcrumbs, subfolder list capped per F25, typed-path jump, Choose/Cancel) opened from the history **Browse** button and the composer's **Choose folder** action; "Open folder" and "Show in Finder" shell out to `open`.
+2. The host exposes `setWindowTitle`, `activateWindow`, `blur` and `focusElement` — no native folder picker (proposed upstream as `remorses/gpuix#82`). Until it lands, picking a folder is an in-app dialog (`ui/FolderPicker.svelte`: breadcrumbs, subfolder list capped per F25, typed-path jump, Choose/Cancel) opened from the bot create form, the bot editor and the composer's **Choose folder** action; "Open folder" and "Show in Finder" shell out to `open`.
 
 Reference images, by the feature they inform:
 
 | Image | Feature |
 |---|---|
-| `chat-history`, `chats-context-menu`, `project-context-menu` | §1 sessions and projects |
+| `chat-history`, `chats-context-menu` | §1 bots and chats |
 | `agent-type`, `agent-access`, `agent-permissions`, `session-context` (lower half) | §2 composer |
 | `model-selector`, `model-selector-2` | §3 model and thinking selection |
 | `session-context` (upper half) | §4 usage and context readout |
@@ -34,106 +34,35 @@ Reference images, by the feature they inform:
 | `model-configuration`, `select-default-model`, `add-provider`, `add-custom-api-provider` | §7 provider and model configuration |
 | — | §8 transcript, §9 shell and settings surface |
 
-## 1. Sessions and projects
+## 1. Bots and chats
 
-**Summary.** The Agents surface's left sidebar becomes the app's chat history: every session the
-user has ever run, grouped under the project folder it belongs to, with the operations needed to
-name, order, branch, archive and delete them. Today that sidebar holds provider/model/keys/spend
-controls and the app has exactly two sessions (`chat`, `chat2`), which the user can neither see
-nor choose; those controls move to Settings (§7) and the two fixed sessions become a list.
+**Summary.** The app is bot-first. A **bot** is a persistent agent with an identity, character,
+roles, capabilities, models, memory and a workspace folder. A **chat** (session) belongs to at most
+one bot; chats with no bot are **plain chats**. There are no projects: a folder is a property of a
+bot (its workspace) or of a plain chat.
 
 **Behavior.**
 
-1. The Agents surface's left sidebar contains exactly two groups, in this order: **Sessions**,
-   then **Projects**.
+1. The **Chats** view lists, in order: one group per live bot (avatar, name, chat count, a live dot
+   when any of its chats is running, a `+` for a new chat with that bot), then **Plain chats**, then
+   a collapsed **Archived** group.
+2. Expanding a bot lists its chats, newest activity first. Group expansion persists.
+3. **Archived** holds every archived chat **and every chat of an archived bot**. Unarchiving the
+   bot (or the chat) returns it to its group.
+4. A chat's title is the user's rename if any, else its first user message when that message is
+   long enough to describe the chat; short first messages ("hi", "ok") never become titles. Without
+   a title the row shows the creation date and time, so rows are always distinguishable.
+5. Each row's menu (right-click or `⋯`): **Rename**, **Move to bot** (dialog; includes "No bot"),
+   **Pin/Unpin**, **Archive/Unarchive**, **Branch**, **Delete** (asks first; never deletes files).
+6. **Workspace.** Every bot has a workspace folder: by default its own **botroom**
+   (`<data>/botroom/<name>/`, created with the bot), or a folder chosen with the folder picker, both
+   in the create-bot form and in the editor's Capabilities section ("Use botroom" restores the
+   default). A plain chat may choose a folder from the composer. A chat's folder is fixed at creation.
+7. Deleting a bot keeps its chats (they become plain chats); archiving a bot moves its chats to
+   Archived.
+8. The list stays usable with hundreds of chats: it scrolls and keeps the active chat in view.
+9. Multiple chats can run at once; each row's live dot reflects its own runs.
 
-2. **Sessions** lists sessions that belong to no project, newest activity first, one row each,
-   title truncated to one line. When there are none, the group is not shown.
-
-3. **Projects** lists one row per known project, most recently active first: a folder icon, the
-   project's display name (default: the folder's base name), a small dot when any of its sessions
-   has a run in flight, an overflow `…` button, and a `+` button. Clicking the rest of the row
-   expands or collapses it; the collapsed/expanded state of each project persists across
-   restarts. The `+` creates a new session inside that project.
-
-4. Expanding a project lists its sessions under time-bucket headings in this order:
-   **Today**, **Yesterday**, **Previous 14 days**, **Older**. A bucket with no sessions is not
-   rendered. Within a bucket, sessions are newest activity first.
-
-5. A session row shows its title, and is highlighted while it is the active session. Multiple sessions can be active at a time, across the whole app. Active sessions are shown carrying a leading ring glyph (`○`) before the title/
-
-6. A session transcript shows that session's full history from
-   storage, the composer binds to it, and the composer's input takes focus. A session with no
-   entries shows an empty transcript, not a placeholder conversation.
-
-7. The overflow `…` menu on a session row lists, in order: **Rename**, **Pin**, **Archive**,
-   **Branch from here**, **Copy session ID**, **Copy store path**, **Delete**. Delete is the only
-   row in the danger color. The menu is anchored to its `…` button, closes on Esc, on a click
-   outside it, and on choosing any item.
-
-8. **Rename** turns the row into a text input holding the current title. Enter commits, Esc
-   cancels, and an empty or whitespace-only value is rejected (the title is unchanged).
-
-9. **Pin** lifts the session above unpinned sessions inside its own list, and the item becomes
-    **Unpin**. A pinned project sorts above unpinned projects the same way. Pinned state persists.
-
-10. **Archive** removes the session from its normal place and puts it in an **Archived** group
-    that renders after Projects, collapsed by default, so an archived session stays reachable.
-    The item becomes **Unarchive**. Archived sessions never appear in a time bucket, and their
-    project's session list excludes them.
-    Collapsed archive group is the home for them.
-
-11. **Branch from here** creates a second session that inherits the active session's history up
-    to its newest entry, selects it, and leaves the source session untouched. The new session is
-    a separate row with its own ID; using either one never changes the other's later entries.
-
-12. **Delete**: the row swaps to an inline confirmation
-    (`Delete this session?` / **Delete** / **Cancel**), matching the app's existing inline
-    confirm on "Clear all recent?". Confirmed, the session and its entries are removed from
-    storage permanently. If the deleted session was active, the newest remaining session becomes
-    active; if none remain, a new empty session is created and made active.
-
-13. Deleting a **project** (from its menu) removes the project entry only. It never deletes
-    files on disk. Its sessions survive and move to the **Sessions** group, because they now
-    belong to no project. The confirmation text says exactly that.
-
-14. The project overflow menu lists, in order: **Open folder**, **Rename project**, **Pin
-    project**, **Archive project**, **Delete project**, **Close**. `Open folder` reveals the
-    folder in the OS file manager. `Rename project` edits the display name only, not the path.
-    Archived projects move to the Archived group with their sessions hidden inside them.
-
-15. A session belongs to at most one project. A session's project is fixed when the session is
-    created (the project active at that moment).
-    
-16. A session may some times need to be moved - a folder moved in local drive, a context shifted to another project - then a session can be moved to new project by right click option, or by dragging it in the sidebar, and dropping in new location.  
-
-17. **New session** (⌘N, and a **New session** action in the Sessions group header) creates a
-    session in the project of the currently active session, or a project-less session when none
-    is active, selects it and focuses the composer. A new session's title is `New session` until
-    its first user message arrives; after that the title is that first message, truncated to one
-    line.
-
-18. New sessions derive title deterministically from the first user message that is a sentence or longer. User often sends tests messages like "hi", or "are you there?" which should not be used.
-
-
-19. A project is added from an **Add project** row at the bottom of the Projects group:
-   typing an absolute folder path and pressing Add, or pressing **Browse** for the
-   folder dialog (breadcrumbs, subfolder list, typed-path jump, Choose). A path
-   that does not exist, or that is not a directory, is rejected inline with the
-   reason and nothing is added. Re-adding an existing project selects it instead
-   of duplicating it. The app never moves, creates or writes into the folder
-   itself. Until the host grows a native picker dialog, the dialog is drawn
-   in-app; a native call replaces its backend without changing this behavior.
-
-20. Every project row can show its live git branch when the folder is a git work tree, and
-    nothing when it is not. Reading the branch never blocks the UI.
-
-21. The history list must stay usable with hundreds of sessions: it scrolls, and the active
-    session stays scrolled into view when it changes.
-
-21. Multiple sessions can run at once ( multiple tabs in main session and in the sidebar panel).
-    Each row's live dot reflects its own session's runs. Sending in one session never blocks or
-    cancels the other.
 
 ## 2. Composer
 
@@ -171,8 +100,8 @@ Today it is a three-row textarea, a model pill, and Send/Stop.
 5. Below the input, a context row shows, left to right: the workspace folder icon and name, the
    current git branch with a branch icon, and `N more` when the workspace holds other worktrees,
    where `N` is a real count and the row is absent when there is nothing more. When the session
-   has no project, the row shows `No folder` and a **Choose folder** action that opens the
-   folder dialog of §1.19.
+   has no folder (a plain chat without one), the row shows `No folder` and a **Choose folder** action that opens the
+   folder picker of §1.6.
 
 6. An attach button (`+`) sits left of the access-mode control. Its function is unchanged scope:
    it is present only when attaching something is possible; until then it does not render, rather
