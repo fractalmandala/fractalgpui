@@ -41,7 +41,9 @@
 
 	const allViews = (): SessionView[] => Object.entries(index.sessions).map(([id, meta]) => ({ id, meta }));
 	const botOf = (v: SessionView) => (v.meta.botId && botIndex.bots[v.meta.botId] ? v.meta.botId : null);
-	const live = $derived(allViews().filter((v) => !v.meta.archived));
+	// A chat is archived when it is, or when its bot is: archived bots' chats live under Archived.
+	const isArchived = (v: SessionView) => v.meta.archived || (!!v.meta.botId && !!botIndex.bots[v.meta.botId]?.archived);
+	const live = $derived(allViews().filter((v) => !isArchived(v)));
 	const bots = $derived(
 		Object.entries(botIndex.bots)
 			.filter(([, b]) => !b.archived)
@@ -50,7 +52,7 @@
 	);
 	const inBot = (id: string) => orderSessions(live.filter((v) => botOf(v) === id));
 	const plain = $derived(orderSessions(live.filter((v) => botOf(v) === null)));
-	const archived = $derived(orderSessions(allViews().filter((v) => v.meta.archived)));
+	const archived = $derived(orderSessions(allViews().filter(isArchived)));
 
 	const labels = $derived(uniqueLabels(allViews()));
 	const labelOf = (id: string) => labels.get(id) ?? 'Chat';

@@ -1,14 +1,16 @@
 <script lang="ts">
 	import Avatar from '../../ui/Avatar.svelte';
 	import Button from '../../ui/Button.svelte';
+	import FolderPicker from '../../ui/FolderPicker.svelte';
 	import IconButton from '../../ui/IconButton.svelte';
 	import { botList, bots_ui, create, editor, selectBot, sessionCount } from './state.svelte.ts';
 
 	// The Bots explorer: every bot with its avatar, role and session count. Selecting one opens the
-	// editor; + creates one. New bots live in the shared botroom unless you give a folder.
+	// editor; + creates one. New bots live in the shared botroom unless you choose a folder.
 	let creating = $state(false);
 	let name = $state('');
 	let workspace = $state('');
+	let picking = $state(false);
 
 	async function submit() {
 		if (await create(name, workspace)) {
@@ -29,14 +31,13 @@
 	{#if creating}
 		<div class="box gap-xs" testId="bots-create">
 			<input class="input" testId="bots-name" placeholder="Name" autofocus value={name} onchange={(e: { value: string }) => (name = e.value)} onsubmit={() => void submit()} />
-			<input
-				class="input"
-				testId="bots-workspace"
-				placeholder="Workspace folder (empty = shared botroom)"
-				value={workspace}
-				onchange={(e: { value: string }) => (workspace = e.value)}
-				onsubmit={() => void submit()}
-			/>
+			<div class="box gap-xs" testId="bots-workspace">
+				<text class="text-xs text-muted truncate" testId="bots-workspace-path">{workspace || 'Workspace: its own botroom folder'}</text>
+				<div class="row gap-sm">
+					<Button label="Choose folder" testId="bots-workspace-choose" onclick={() => (picking = true)} />
+					{#if workspace}<Button label="Use botroom" variant="ghost" testId="bots-workspace-reset" onclick={() => (workspace = '')} />{/if}
+				</div>
+			</div>
 			{#if editor.error}<text class="text-xs text-danger" testId="bots-error">{editor.error}</text>{/if}
 			<div class="row gap-sm">
 				<Button label="Create" variant="primary" testId="bots-create-go" onclick={() => void submit()} />
@@ -60,3 +61,15 @@
 	{/each}
 	{#if editor.notice && list.length}<text class="text-xs text-muted" testId="bots-notice">{editor.notice}</text>{/if}
 </div>
+{#if picking}
+	<FolderPicker
+		initial={workspace || undefined}
+		title="Workspace folder"
+		onchoose={(path) => {
+			workspace = path;
+			picking = false;
+		}}
+		onclose={() => (picking = false)}
+		testId="bots-picker"
+	/>
+{/if}

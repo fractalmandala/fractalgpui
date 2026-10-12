@@ -13,7 +13,7 @@ import { fauxAssistantMessage, fauxToolCall } from '@earendil-works/pi-ai/provid
 import { openHarness, pi_context } from '../../kernel/pi/harness.svelte.ts';
 import { botIndex, createSession, sessionHarness, sessionMeta } from '../../kernel/pi/sessions.svelte.ts';
 import { sessionLabel } from '../../kernel/pi/metadata.ts';
-import { createBot } from '../../kernel/pi/bots/store.ts';
+import { createBot, updateBot } from '../../kernel/pi/bots/store.ts';
 import {
 	active,
 	branchSession,
@@ -308,6 +308,13 @@ const t1 = textIn(find_test_id(`hist-session-${adaKey}-title`));
 const t2 = textIn(find_test_id(`hist-session-${adaChat2.key}-title`));
 check('untitled rows are told apart', !!t1 && !!t2 && t1 !== t2 && !t1.includes('New session'), true);
 check('rows show an updated time', !!find_test_id(`hist-session-${adaKey}-updated`), true);
+// Archiving a bot moves its chats into Archived; unarchiving brings them back
+await updateBot(hs, botA, { archived: true });
+check('chats of an archived bot leave the bot groups', await ui_is(`hist-bot-${ptid(botA)}`, false), true);
+if (!find_test_id(`hist-session-${adaKey}-more`)) click_test_id('hist-archived');
+check('and are listed under Archived', await ui_is(`hist-session-${adaKey}`), true);
+await updateBot(hs, botA, { archived: false });
+check('unarchiving the bot restores its group', await ui_is(`hist-bot-${ptid(botA)}`), true);
 // Move to bot: a popover listing bots, not an inline list
 click_test_id(`hist-session-${a.key}`, { button: 2 });
 click_test_id(`hist-session-${a.key}-menu-bot`);
@@ -420,4 +427,4 @@ try {
 check('opening a missing session throws', threw.includes('unknown session'), true);
 
 rmSync(pickRoot, { recursive: true, force: true });
-finish('agents', 89);
+finish('agents', 92);

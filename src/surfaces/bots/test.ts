@@ -36,6 +36,13 @@ check('the explorer is empty at first and says how to start', await until(() => 
 // create: into the shared botroom (no workspace)
 click_test_id('bots-new');
 entry('Ada', 'bots-name');
+check('the create form uses the folder picker, botroom by default', !!find_test_id('bots-workspace-choose') && painted().includes('its own botroom'), true);
+click_test_id('bots-workspace-choose');
+check('Choose folder opens the picker from the create form', await until(() => !!find_test_id('bots-picker')), true);
+click_test_id('bots-picker-choose');
+check('choosing fills the workspace', await until(() => !find_test_id('bots-picker') && !!find_test_id('bots-workspace-reset')), true);
+click_test_id('bots-workspace-reset');
+check('Use botroom resets it', await until(() => !find_test_id('bots-workspace-reset')), true);
 click_test_id('bots-create-go');
 check('creating adds the bot to the list and selects it', await until(() => botList().length === 1 && bots_ui.selected === botList()[0].id), true);
 const id = bots_ui.selected;
@@ -95,4 +102,4 @@ check('a session can be detached', sessionMeta(key)?.botId ?? null, null);
 await assignSession(Number(key) as never, id);
 check('and moved to a bot', sessionMeta(key)?.botId, id);
 
-finish('bots', 27);
+finish('bots', 31);
