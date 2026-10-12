@@ -273,3 +273,16 @@ or per-test timeouts — tests use `afterAll` and loops.
 Baseline note: before this work `npm test` already had 12 failing bun tests (react-to-svelte converter) and 5 headless
 files failing on the uncommitted style/icon changes (e.g. icon 20px vs 16px, missing `surface-tools`); the failing set
 is identical after this work. Not run: real provider summarizer, anything in the live window.
+
+## Pibots merge, Stage 7: pibots retired (2026-10-12, `main`)
+
+- Verified against the plan's module table: audit, caps, destructive detector, personality/profile/memory, browser,
+  kept-models/keys/env policy, usage, roles/plugins are in `src/kernel/pi`. Missing pieces ported now:
+  `fs-tools.ts` (bot tools `list_dir`, `search_files`, roaming, read-only), `bots/disk.ts` (allocated bytes per part
+  with budgets; kernel only), `BLOCKED_ENV` (`ANTHROPIC_AUTH_TOKEN` never used as a key) in `providers.ts`. Tests added.
+- Assets carried over to `assets/pibots/`: 1000 icons, 10 bot images, pibots palette/token Rust sources (reference only).
+- pibots repo (branch `feat/first-slice`, not main): Rust UI, socket harness, protocol, scripts and AGENTS docs removed;
+  README points to fractalgpui; `docs/` (incl. PLAN.md) and `public/` kept. Nothing pushed in either repo.
+- `npm run typecheck` clean, `npm test` green.
+- Remaining gaps: MCP client; Import into memory; tabs to a separate window; rate-limit header capture for usage
+  windows; memory additive vs view-only; disk usage in the bot editor; palette into Sass tokens.

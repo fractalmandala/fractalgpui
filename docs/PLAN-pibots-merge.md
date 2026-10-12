@@ -2,7 +2,7 @@
 
 Branch: `main` (single branch). Decision made: fractalgpui is the app; pibots' TypeScript harness
 (`github.com/fractalmandala/pibots`, `harness/src`) moves in as in-process kernel modules; pibots' Rust/GPUI UI
-and its unix-socket protocol are retired. Status of this document: updated after Stage 2 (see **Status** below).
+and its unix-socket protocol are retired. Status of this document: ALL STAGES DONE (0-7); see **Status** and **Remaining gaps** below.
 
 ## Status
 
@@ -13,7 +13,11 @@ and its unix-socket protocol are retired. Status of this document: updated after
 | 4 Browser | DONE: `kernel/pi/browser.ts` (lazy optional Playwright, per-bot persistent profile, headed/headless, install-on-demand into `<data>/playwright`), `bots/browser-tools.ts` + `fractal-browser` extension (guarded like file tools), Browser dock view. Screenshots are files in the bot media folder; transcript never holds bytes. Not verified: live in-window Playwright, `<img>` refresh on screen |
 | 5 Models & usage | DONE: kept-models-only picker (`kept.ts`), env-detected providers + ignore, key files `<data>/keys/<provider>.key` 0600 or `env:NAME`, Models & providers dock view, usage panel + `windows.ts` (OpenRouter `/key`; header parser not wired to live requests; others say unavailable) |
 | 3b Chats list | DONE: the old Sessions/Projects sidebar is replaced by a bot-first Chats view (each bot expands to its chats with New chat; Plain sessions; Archived). The project registry (`projects`, `projectId`, add/rename/pin/archive/remove project, drag-to-project) is deleted; a plain session has an optional `folder` (composer), a bot session works in its bot's workspace (set in the bot editor, Capabilities, with the folder picker). Old stores are upgraded on open (`dropLegacyProjects`: a session keeps its project folder as `folder`). Rows show a real title or the start date/time (never identical), plus the updated time; Move to bot and Delete are dialogs |
-| 2 Kernel move | DONE for audit, caps, destructive detector, personality, profile, temporal memory, bot wiring. NOT ported yet: `tools-fs.ts` (not in this slice), `disk.ts`, browser, usage windows, provider-policy deltas (Stages 3-5) |
+| 2 Kernel move | DONE: audit, caps, destructive detector, personality, profile, temporal memory, bot wiring; in Stage 7 also `fs-tools.ts` (bot tools `list_dir`, `search_files`), `bots/disk.ts` (allocated-bytes per-bot usage + budgets, kernel only, not shown in the editor yet), `BLOCKED_ENV` in `providers.ts` |
+| 6 Roles & plugins | DONE: roles catalog from SKILL.md files, Agent Plugins loader, per-bot enable, `skill_read` |
+| 7 Retire pibots UI | DONE: pibots repo (branch `feat/first-slice`) has ui/, harness/, protocol/, scripts and AGENTS docs removed; README points here; docs/ and public/ kept for history. Icons (1000), bot images and palette tokens copied to `assets/pibots/` |
+
+Remaining gaps (not started): MCP client for plugin servers; "Import into memory" for detached sessions; dragging tabs out to a separate window; rate-limit header capture for Anthropic/OpenAI usage windows; memory is additive (full transcript + `<memory_view>`), view-only history is undecided; disk usage not shown in the bot editor; pibots palette not mapped into the Sass tokens.
 
 Decisions made while building (all revisitable):
 - Deleting a bot keeps its sessions (botId cleared, bot extension deselected). Files: botroom never deleted; the bot home (audit, memory, browser profile) stays unless `removeHome`.
