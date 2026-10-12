@@ -81,9 +81,9 @@ click_test_id(`bot-${id}`);
 click_test_id('be-chat');
 check('New chat creates a session owned by the bot', await until(() => mainChat()?.key !== undefined && sessionMeta(mainChat().key)?.botId === id), true);
 const key = mainChat().key;
-await assignSession(Number(key), null);
+await assignSession(Number(key) as never, null);
 check('a session can be detached', sessionMeta(key)?.botId ?? null, null);
-await assignSession(Number(key), id);
+await assignSession(Number(key) as never, id);
 check('and moved to a bot', sessionMeta(key)?.botId, id);
 
 finish('bots', 23);
