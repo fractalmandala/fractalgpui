@@ -2,7 +2,27 @@
 
 Branch: `feat/pibots-merge`. Decision made: fractalgpui is the app; pibots' TypeScript harness
 (`github.com/fractalmandala/pibots`, `harness/src`) moves in as in-process kernel modules; pibots' Rust/GPUI UI
-and its unix-socket protocol are retired. Status of this document: written after Stage 0.
+and its unix-socket protocol are retired. Status of this document: updated after Stage 2 (see **Status** below).
+
+## Status
+
+| Stage | State |
+|---|---|
+| 0 Playwright under Bun | DONE |
+| 1 Data model | DONE: `bots/meta.ts` (`fractal.bots`, versioned `BotMeta`, ids `bot_<10 base36>`, avatar fallback, diff), `bots/paths.ts` (botroom + per-bot home), `bots/store.ts` (create / `updateBot` patch→diff with `dryRun` / confirmed `setIdentity` / duplicate / delete keeps sessions and detaches / list / `watchBots`), `SessionMeta.botId?`, `createSession(..., {botId})` |
+| 2 Kernel move | DONE for audit, caps, destructive detector, personality, profile, temporal memory, bot wiring. NOT ported yet: `tools-fs.ts` (not in this slice), `disk.ts`, browser, usage windows, provider-policy deltas (Stages 3-5) |
+
+Decisions made while building (all revisitable):
+- Deleting a bot keeps its sessions (botId cleared, bot extension deselected). Files: botroom never deleted; the bot home (audit, memory, browser profile) stays unless `removeHome`.
+- `botId` is an omitted key for plain sessions (never `undefined`, never `null`), so old rows need no migration.
+- The bot extension (`fractal-bot`) is not in the host default selection (`DEFAULT_EXTENSIONS` in `tools.ts`); a bot session selects `[fractal-bot, coding-tools, fractal-tools]` at creation. Plain sessions see no bot tools or sections.
+- Policy: bot sessions skip folder confinement (bots roam; the `access` mode and plan/ask modes still apply), force an approval for destructive calls even in `full` access (the reason is shown in the existing approval row), write an fsynced audit row BEFORE every call (if it cannot be written the call does not run) and one after, and cap results at 32k chars. Plain sessions are byte-for-byte as before.
+- Temporal memory is ADDITIVE here: the full transcript is still sent and the `<memory_view>` is an extra section (pibots disabled compaction and replaced history with the view). Switching to view-only history is a separate decision.
+- Memory records finished user/assistant turns when the prompt is built (entries have no timestamps, so lines are stamped at sync time); the current user message is excluded until it is answered.
+- Memory summaries use the bot's `summaryModel` or the session's model via pi-ai; with no provider/key the lines stay pending and are shown as "(not summarized yet)" (nothing is faked).
+- `classifyDestructive` is kept conservative as ported (e.g. `grep -r rm .` asks).
+
+Tests: `src/kernel/pi/{audit,caps,destructive}.test.ts`, `bots/{store,profile,memory,session}.test.ts` (83 new bun tests).
 
 ## What exists in fractalgpui (verified in source)
 
