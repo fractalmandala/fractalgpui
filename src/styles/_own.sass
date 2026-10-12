@@ -61,6 +61,10 @@
 	--wb-icon-sm: 16px
 	--wb-icon-md: 22px
 	--wb-rail-width: 52px
+	// Window chrome (mirrors src/kernel/chrome.ts): left strip holding the macOS traffic
+	// lights, and the transparent title strip across the top.
+	--wb-sidebar-strip: 80px
+	--wb-title-strip: 32px
 	--wb-side-width: 200px
 
 // Neutral surfaces: pure white / near-white and black / near-black. These override
@@ -319,6 +323,15 @@
 	gap: var(--wb-pane-gap)
 	background-color: var(--wb-shell-bg)
 
+.wb-sidebar-strip // Left window strip; the traffic lights sit at its top
+	width: var(--wb-sidebar-strip)
+	flex-shrink: 0
+
+.wb-title-strip // Transparent title strip over the dock
+	height: var(--wb-title-strip)
+	flex-shrink: 0
+	padding: 0 var(--space-sm)
+
 .wb-pane // One tab group: header strip + the active view
 	position: relative
 	overflow: hidden
@@ -412,13 +425,6 @@
 
 .wb-menu-pad // A menu opened inside a pane header
 	padding: var(--space-xs)
-
-.section-main-footer // The status bar
-	height: var(--height-bs)
-	flex-shrink: 0
-	padding: 0 var(--space-sm)
-	border-radius: var(--wb-radius)
-	background-color: var(--wb-pane-bg)
 
 .wb-row-item // A selectable row in a list (sessions, bots, settings pages)
 	min-height: var(--control-h-sm)
@@ -584,11 +590,6 @@
 	flex-grow: 1
 	min-height: 0
 
-.section-main-footer // The status bar
-	height: var(--height-bs)
-	flex-shrink: 0
-	background-color: var(--bg-surface)
-
 .wb-brand // The app mark
 	width: var(--height-bs)
 	height: var(--height-bs)
@@ -622,10 +623,6 @@
 	border-width: 1px
 	border-color: var(--border)
 	background-color: var(--bg-sunken)
-
-.wb-status-link
-	cursor: pointer
-	user-select: none
 
 // --- Command palette --------------------------------------------------------------
 .wb-scrim // Full-window dimmer behind the palette

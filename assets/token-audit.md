@@ -130,7 +130,6 @@ Literal px still allowed in `_own.sass`, as listed in `test/styles.ts` `LITERAL_
 | `.wb-splitter` | width | 5px | nearest | `--space-xs` (4px, Δ +1) |
 | `.section-sidebar-left.rail` | width | 52px | no-token | no token exists |
 | `.section-sidebar-left-header, .section-sidebar-panel-header, .section-sidebar-right-header, .section-main-header` | height | 44px | nearest | `--control-h-lg` (38px, Δ +6) |
-| `.section-main-footer` | height | 24px | exact | `--height-bs` (24px) |
 | `.wb-brand` | width | 24px | exact | `--height-bs` (24px) |
 | `.wb-brand` | height | 24px | exact | `--height-bs` (24px) |
 | `.wb-brand` | border-radius | 6px | nearest | `--radius-sm` (4px, Δ +2) or `--radius-md` (8px, Δ −2) |
@@ -275,7 +274,7 @@ Colours are compared against fractalstyler's value for the same role in the same
 | Token | value |
 |---|---|
 | `--header-height` | 80px |
-| `--footer-height` | 32px |
+| `--footer-height` | 32px (unused: no footer) |
 | `--fit-height` | 112px |
 | `--sidebar-width` | 280px |
 | `--sidebar-width-left` | 280px |

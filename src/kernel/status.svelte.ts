@@ -1,4 +1,4 @@
-/** The status bar's transient message (e.g. "Copied 12 lines"). */
+/** The title strip's transient message (e.g. "Copied 12 lines"). */
 
 export type Tone = 'info' | 'success' | 'danger';
 

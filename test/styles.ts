@@ -23,7 +23,7 @@ check('accent is the app green in both modes', [light['theme-color'], dark['them
 check('black text on the accent', dark['on-accent'], '#18181B');
 check('sans font is the installed family', dark['font-sans'], 'General Sans Variable');
 check('app token --font-mono present', dark['font-mono'], 'Menlo');
-check('own classes all translated', ['wb-btn', 'wb-shell', 'wb-pane', 'wb-pane-head', 'wb-ptab', 'wb-gutter-row', 'wb-gutter-hit-row', 'wb-dropzones', 'wb-row-item', 'wb-avatar', 'section-main-footer', 'wb-palette', 'wb-scrim'].every((c) => build.defined.has(c)));
+check('own classes all translated', ['wb-btn', 'wb-shell', 'wb-pane', 'wb-pane-head', 'wb-ptab', 'wb-gutter-row', 'wb-gutter-hit-row', 'wb-dropzones', 'wb-row-item', 'wb-avatar', 'wb-sidebar-strip', 'wb-title-strip', 'wb-palette', 'wb-scrim'].every((c) => build.defined.has(c)));
 
 // _own.sass sizes go through fractalstyler tokens (assets/token-audit.md): no literal px
 // for these properties, except the documented no-token cases below.

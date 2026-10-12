@@ -33,7 +33,7 @@ Window, as in `assets/wireframe-v1.png`:
 | Section | Parts | Collapsible |
 |---|---|---|
 | `section-sidebar-left` | header (surface nav in a row, theme toggle), body (the surface's context) | yes, animated to 0 width; open by default; app-wide, persists |
-| `section-main` | header (sidebar toggle, surface tabs, toolbar, panel toggles), body (surface), footer (status bar) | never |
+| `section-main` | header (sidebar toggle, surface tabs, toolbar, panel toggles), body (surface) | never |
 | `section-sidebar-panel` | header, body | yes; collapsed by default; per surface, persists |
 | `section-sidebar-right` | header, body | yes; collapsed by default; per surface, persists |
 

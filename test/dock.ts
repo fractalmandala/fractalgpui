@@ -23,8 +23,9 @@ const shot = (n: string) => process.env.FRACTALGPUI_SHOTS && screenshot(`${proce
 let [ax, , aw] = box(`group-${gid('sessions')}`);
 let [bx, by, , bh] = box(`group-${gid('chat')}`);
 check('two panes are 2px apart', Math.round(bx - (ax + aw)), 2);
-check('the panes start 2px below the window top and the shell edge', [Math.round(by), Math.round(ax)], [2, 2]);
-check('panes fill the height down to the status bar', bh > 400);
+// the 32px title strip is above the dock and the 80px left strip beside it
+check('the panes start 2px below the title strip and 2px right of the left strip', [Math.round(by), Math.round(ax)], [34, 82]);
+check('panes fill the height down to the window bottom', bh > 400);
 shot('default');
 
 // nested: dock the bot editor below chat: still 2px
@@ -87,7 +88,7 @@ click_test_id(`group-${gid('chat')}`);
 toggle_zoom(); settle();
 check('zoom renders one group alone', [!!find_test_id(`group-${gid('chat')}`), !find_test_id(`group-${gid('sessions')}`), !!find_test_id(`pzoom-${gid('chat')}`)], [true, true, true]);
 const z = box(`group-${gid('chat')}`);
-check('the zoomed pane fills the window (2px margin)', [Math.round(z[0]), Math.round(z[2])], [2, 1396]);
+check('the zoomed pane fills the dock area (2px margin)', [Math.round(z[0]), Math.round(z[2])], [82, 1316]);
 shot('zoom');
 click_test_id(`pzoom-${gid('chat')}`);
 check('un-zoom restores the layout', [ui.zoom, !!find_test_id(`group-${gid('sessions')}`)], ['', true]);

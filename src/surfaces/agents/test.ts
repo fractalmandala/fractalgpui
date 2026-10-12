@@ -33,7 +33,8 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const ptid = (s: string) => s.replace(/[^a-zA-Z0-9]/g, '-');
 
 load_styles();
-mount_headless(App, { width: 1400, height: 860 });
+// 860 + the 32px title strip, so the dock area keeps the height these checks were written for.
+mount_headless(App, { width: 1400, height: 892 });
 settle();
 
 async function rows_with(chat: AgentChat, kind: string, text: string, timeoutMs = 15000): Promise<boolean> {

@@ -1,7 +1,7 @@
 // The shell: default layout, views, palette, keymap, theme, persistence.
 import './harness.ts';
 import { readFileSync } from 'node:fs';
-import { all_text, check, click_at, click_test_id, find_test_id, finish, mount_headless, press, screenshot, type } from 'gpuix-svelte/test';
+import { all_text, bounds, check, click_at, click_test_id, find_test_id, finish, mount_headless, press, screenshot, type } from 'gpuix-svelte/test';
 import { load_styles } from '../build/styles.ts';
 import App from '../src/App.svelte';
 import { palette } from '../src/kernel/commands.svelte.ts';
@@ -21,7 +21,8 @@ const tab = (view: string) => find_view(dock.root, view)?.leaf.id ?? '';
 check('the default layout shows sessions, bots, chat and the bot editor as tabs', ['sessions', 'bots', 'chat', 'bot-editor'].every((v) => !!find_test_id(`ptab-${tab(v)}`)));
 check('the active tab of each group is mounted, the others are not', [!!find_test_id('view-sessions'), !!find_test_id('view-bots'), !!find_test_id('view-chat'), !!find_test_id('view-bot-editor')], [true, false, true, false]);
 check('there is no old home / nav / sidebar chrome', !find_test_id('nav-home') && !find_test_id('toggle-sidebar-left') && !find_test_id('section-sidebar-left') && !find_test_id('surface-home'));
-check('status bar names the focused view', find_test_id('footer-focus') !== null && all_text().includes('Chat'));
+check('no footer / status bar; an 80px left strip and a title strip frame the dock', !find_test_id('section-main-footer') && !find_test_id('footer-focus') && !!find_test_id('sidebar-strip') && !!find_test_id('title-strip'));
+check('the left strip is 80px wide and the title strip 32px tall', [bounds(find_test_id('sidebar-strip')!)?.[2], bounds(find_test_id('title-strip')!)?.[3]], [80, 32]);
 
 // opening views: a new one goes to the main area, an open one just comes forward
 click_test_id(`ptab-${tab('bots')}`);
@@ -73,4 +74,4 @@ const saved = JSON.parse(readFileSync(settings_file(), 'utf8'));
 check('settings.json keeps the theme and the layout tree', saved.version === 1 && saved.slots.app.theme === 'dark' && saved.slots.dock.root.kind === 'split' && !('activeSurface' in saved.slots.app));
 check('tool state persisted', saved.slots['tool.css-to-sass'].css, '.kept { color: red }');
 
-finish('shell', 21);
+finish('shell', 22);

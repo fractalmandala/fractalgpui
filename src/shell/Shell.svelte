@@ -5,12 +5,14 @@
 	import { install } from '../kernel/views.svelte.ts';
 	import CommandPalette from './CommandPalette.svelte';
 	import Dock from './Dock.svelte';
-	import MainFooter from './MainFooter.svelte';
+	import { status } from '../kernel/status.svelte.ts';
 
 	install();
 
-	// The shell: a dark backdrop with the dock on it and the status bar under it. Panes are
-	// islands: the backdrop shows in the 2px gaps (see `.wb-shell`).
+	// The shell: an 80px left strip (macOS traffic lights at its top), a transparent 32px
+	// title strip across the top (the window's own title bar is taken over, see
+	// kernel/chrome.ts), and the dock on a dark backdrop. Panes are islands: the backdrop
+	// shows in the 2px gaps (see `.wb-shell`). No footer / status bar.
 	// A tab released anywhere that is not a drop zone cancels the drag (deferred, so a drop
 	// handler that runs in the same event still sees the drag).
 	function released() {
@@ -34,7 +36,22 @@
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="wb-shell box full sans text-primary" testId="shell" onmouseup={released}>
-	<Dock />
-	<MainFooter />
+	<div class="row grow min0" testId="shell-body">
+		<div class="wb-sidebar-strip" testId="sidebar-strip"></div>
+		<div class="box grow min0">
+			<div class="wb-title-strip row ycenter xbetween" testId="title-strip">
+				<div></div>
+				{#if status.message}
+					<text
+						testId="status-message"
+						class:text-success={status.tone === 'success'}
+						class:text-danger={status.tone === 'danger'}
+						class:text-secondary={status.tone === 'info'}>{status.message}</text
+					>
+				{/if}
+			</div>
+			<Dock />
+		</div>
+	</div>
 	{#if palette.open}<CommandPalette />{/if}
 </div>

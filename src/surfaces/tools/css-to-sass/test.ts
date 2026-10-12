@@ -31,7 +31,7 @@ click_test_id('opt-nest');
 
 click_test_id('copy');
 check('copy puts the Sass on the clipboard', last_copied(), '.a\n\tcolor: red\n\t.b\n\t\tmargin: 0\n');
-check('copy flashes the status bar', status.message.startsWith('Copied 4 lines') && !!find_test_id('status-message'));
+check('copy flashes a message in the title strip', status.message.startsWith('Copied 4 lines') && !!find_test_id('status-message'));
 
 click_test_id('opt-indent-2');
 click_test_id('copy');
