@@ -49,11 +49,13 @@ export type BotPatch = {
 	/** Path of an avatar image; `null` removes it (back to the generated fallback). */
 	avatar?: string | null;
 	roles?: string[];
+	/** Enabled plugin ids. */
+	plugins?: string[];
 	/** Assign a folder; `null` returns to the bot's botroom folder. */
 	workspace?: string | null;
 	archived?: boolean;
 };
-const PATCH_KEYS = new Set(['character', 'capabilities', 'memory', 'avatar', 'roles', 'workspace', 'archived']);
+const PATCH_KEYS = new Set(['character', 'capabilities', 'memory', 'avatar', 'roles', 'plugins', 'workspace', 'archived']);
 
 export type SaveResult = { bot: BotMeta; diff: DiffEntry[] };
 
@@ -129,6 +131,7 @@ function applyPatch(cur: BotMeta, patch: BotPatch, root: string, id: string): Bo
 	if (patch.capabilities) next.capabilities = { ...next.capabilities, ...patch.capabilities };
 	if (patch.memory) next.memory = { ...next.memory, ...patch.memory };
 	if (patch.roles) next.roles = [...patch.roles];
+	if (patch.plugins) next.plugins = [...patch.plugins];
 	if (patch.archived !== undefined) next.archived = patch.archived;
 	if (patch.avatar === null) delete next.avatar;
 	else if (patch.avatar !== undefined) next.avatar = patch.avatar;

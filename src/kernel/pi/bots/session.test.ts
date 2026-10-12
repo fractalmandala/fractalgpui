@@ -251,6 +251,33 @@ describe('audit-before-acting and result caps', () => {
 });
 
 describe('agent tools on the bot', () => {
+	test('roles inject their instructions; enabled plugins list skills and skill_read loads one', async () => {
+		const { h, id, botId } = await botSession({ name: 'Rho' });
+		const put = (f: string, t: string) => {
+			mkdirSync(join(f, '..'), { recursive: true });
+			writeFileSync(f, t);
+		};
+		put(join(root, 'roles', 'auditor', 'SKILL.md'), '---\nname: Auditor\ndescription: checks\n---\nAlways list risks first.');
+		put(join(root, 'plugins', 'rep', 'plugin.json'), JSON.stringify({ $schema: 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json', name: 'rep' }));
+		put(join(root, 'plugins', 'rep', 'skills', 'sum', 'SKILL.md'), '---\nname: sum\ndescription: Summarize reports\n---\nUse bullet points.');
+		await updateBot(h, botId, { roles: ['auditor', 'missing'], plugins: ['rep'] }, { root });
+		const seen: string[] = [];
+		const flat = (v: unknown) => (typeof v === 'string' ? v : JSON.stringify(v ?? ''));
+		const capture = (reply: ReturnType<typeof fauxAssistantMessage>) => (c: { messages: { role: string; content?: unknown; sections?: unknown }[] }) => {
+			seen.push(c.messages.filter((m) => m.role === 'system').map((m) => `${flat(m.content)}\n${flat(m.sections)}`).join('\n'));
+			return reply;
+		};
+		faux.setResponses([capture(toolRound('skill_read', { plugin: 'rep', skill: 'sum' }, 'sk1')), capture(fauxAssistantMessage('Read it.'))]);
+		await (await run(h, id, 'Please summarize the quarterly report for me now')).wait(ctx());
+		expect(seen[0]).toContain('Always list risks first.');
+		expect(seen[0]).toContain('rep/sum: Summarize reports');
+		expect(resultText(await transcript(h, id))).toContain('Use bullet points.');
+		await updateBot(h, botId, { plugins: [] }, { root });
+		faux.setResponses([toolRound('skill_read', { plugin: 'rep', skill: 'sum' }, 'sk2'), fauxAssistantMessage('ok')]);
+		await (await run(h, id, 'Read the summarize skill again please, thanks')).wait(ctx());
+		expect(resultText(await transcript(h, id))).toContain('not enabled for you');
+	});
+
 	test('character_edit persists in the bot doc with an audit row; switched off, it refuses', async () => {
 		const a = await botSession({});
 		faux.setResponses([toolRound('character_edit', { tone: 'direct', verbosity: 'terse', reason: 'user asked for brevity' }, 'ce1'), fauxAssistantMessage('Switched to a terse, direct style.')]);

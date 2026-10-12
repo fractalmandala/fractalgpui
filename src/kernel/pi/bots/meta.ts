@@ -44,8 +44,10 @@ export type BotMeta = {
 	profile: Profile;
 	/** Absolute path of a user-chosen avatar image; omitted = the generated fallback (`avatarFallback`). */
 	avatar?: string;
-	/** Role ids into the catalog (Stage 6). */
+	/** Role ids into the roles catalog (`catalog.ts`). */
 	roles: string[];
+	/** Ids of installed Agent Plugins enabled for this bot; absent on older rows = none. */
+	plugins?: string[];
 	/** Default workspace: the bot's botroom folder unless assigned. */
 	workspace: string;
 	/** True when `workspace` is the auto-created botroom folder. */
@@ -99,6 +101,7 @@ export function personalityView(b: BotMeta) {
 export function validateBot(b: BotMeta): string[] {
 	const errs = validate(PERSONALITY_SCHEMA, personalityView(b));
 	if (b.roles.some((r) => typeof r !== 'string' || !r)) errs.push('$.roles: must be a list of non-empty strings');
+	if (b.plugins && b.plugins.some((r) => typeof r !== 'string' || !r)) errs.push('$.plugins: must be a list of non-empty strings');
 	if (!b.workspace.startsWith('/')) errs.push('$.workspace: must be an absolute path');
 	return errs;
 }

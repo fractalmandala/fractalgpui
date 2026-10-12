@@ -20,6 +20,7 @@ import { assertValid, BotsDoc, type BotMeta, type BotsIndex, type Character, typ
 import { botPaths, ensureBotFolders } from './paths.ts';
 import { cleanCharacterPatch, renderCapabilities, renderCharacter, renderIdentity } from './personality.ts';
 import { propose, removeEntry, renderProfile, setEntry } from './profile.ts';
+import { catalogDirs, loadPlugins, loadRoles, renderRoles, renderSkills } from './catalog.ts';
 import { llmSummarizer, MemoryManager, type Summarize } from './memory.ts';
 
 /**
@@ -136,6 +137,14 @@ const secs = [
 		const b = await botOf(i);
 		return b && renderCharacter(b.bot);
 	}),
+	section('bot-roles', async (i) => {
+		const b = await botOf(i);
+		return b && b.bot.roles.length ? renderRoles(b.bot.roles, loadRoles(catalogDirs(rootOf()).rolesDir)) : undefined;
+	}, { tag: false }),
+	section('bot-skills', async (i) => {
+		const b = await botOf(i);
+		return b && b.bot.plugins?.length ? renderSkills(b.bot.plugins, loadPlugins(catalogDirs(rootOf()).pluginsDir)) : undefined;
+	}, { tag: false }),
 	section('bot-capabilities', async (i) => {
 		const b = await botOf(i);
 		return b && renderCapabilities(b.bot);
@@ -282,10 +291,38 @@ const memoryDate = defineTool({
 	}
 });
 
+const skillRead = defineTool({
+	name: 'skill_read',
+	description: 'Read the full instructions (SKILL.md) of a skill from one of your enabled plugins, as listed in <skills>. Optionally read another file inside that skill folder by relative path.',
+	replay: 'safe',
+	parameters: Type.Object({ plugin: Type.String(), skill: Type.String(), file: Type.Optional(Type.String({ description: 'relative path inside the skill folder' })) }),
+	execute: async (a, api: ToolExecutionApi, context) => {
+		const { plugin, skill, file } = a as { plugin: string; skill: string; file?: string };
+		const botId = await botIdOf(api, context);
+		if (!botId) return text('This session has no bot, so it has no plugins.', true);
+		const snap = await api.snapshot(BotsDoc, context).catch(() => undefined);
+		if (!snap?.bots[botId]?.plugins?.includes(plugin)) return text(`Plugin "${plugin}" is not enabled for you.`, true);
+		const p = loadPlugins(catalogDirs(rootOf()).pluginsDir).find((x) => x.id === plugin);
+		const s = p?.skills.find((x) => x.id === skill);
+		if (!p || !s) return text(`No skill "${skill}" in plugin "${plugin}".`, true);
+		if (!file) return text(`# ${s.name}\n${s.description}\n\n${s.body}`.slice(0, 40_000));
+		const { dirname, resolve, sep } = await import('node:path');
+		const base = dirname(s.file);
+		const target = resolve(base, file);
+		if (!target.startsWith(base + sep)) return text('The file must be inside the skill folder.', true);
+		try {
+			const { readFileSync } = await import('node:fs');
+			return text(readFileSync(target, 'utf8').slice(0, 40_000));
+		} catch (e) {
+			return text((e as Error).message, true);
+		}
+	}
+});
+
 export const botTools = defineExtension({
 	name: BOT_EXTENSION,
 	sections: secs,
-	tools: [characterEdit, profileUpdate, memoryZoom, memoryDate]
+	tools: [characterEdit, profileUpdate, memoryZoom, memoryDate, skillRead]
 });
 
 /**
