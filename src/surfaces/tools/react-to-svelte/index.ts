@@ -13,7 +13,7 @@ function files() {
 export default {
 	id: 'react-to-svelte',
 	title: 'React → Svelte',
-	icon: 'code',
+	icon: 'svelte-react',
 	description: 'Convert a React component (TSX/JSX, hooks) to Svelte 5 with runes, snippets and typed props.',
 	component: ReactToSvelte,
 	toolbar: Toolbar,

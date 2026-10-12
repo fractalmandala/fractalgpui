@@ -11,16 +11,16 @@
 	}: { tabs: Tab[]; value: string; onchange: (id: string) => void; testId?: string } = $props();
 </script>
 
-<div class="wb-tabs row ycenter gap-xs px-md" {testId}>
+<div class="wb-tabs row ycenter gap-xs px-md min0" {testId}>
 	{#each tabs as tab (tab.id)}
 		<div
-			class="wb-tab row ycenter gap-xs"
+			class="wb-tab row ycenter gap-xs min0"
 			class:active={tab.id === value}
 			hitbox="self"
 			testId={`${testId}-${tab.id}`}
 			onclick={() => onchange(tab.id)}
 		>
-			<text>{tab.label}</text>
+			<text class="min0 truncate">{tab.label}</text>
 			{#if tab.badge != null}<div class="wb-pill row ycenter"><text>{tab.badge}</text></div>{/if}
 		</div>
 	{/each}

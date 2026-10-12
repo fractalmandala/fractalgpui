@@ -14,6 +14,8 @@
 import * as t from '@babel/types';
 import { gen_inline, gen_pattern } from './gen.ts';
 
+export type MarkupBody = t.Node | t.Statement[] | null;
+
 export interface JsxCtx {
 	warnings: string[];
 	/** Names rendered with {@render}: snippet props and the component's own snippets. */
@@ -24,6 +26,8 @@ export interface JsxCtx {
 	dom_refs: Set<string>;
 	/** Identifiers bound to a child component's `ref` prop. */
 	component_refs: Set<string>;
+	/** Ref identifiers backed by useRef/useState and safe for bind:this. */
+	ref_names: Set<string>;
 	/** `<X.Provider value>` seen: becomes setContext in the script. */
 	provides: { key: string; value: t.Expression }[];
 	/** styled-components converted to a tag plus a scoped class. */
@@ -116,6 +120,8 @@ export function is_jsxish(n: t.Node): boolean {
 		const fn = u.arguments[0];
 		return (t.isArrowFunctionExpression(fn) || t.isFunctionExpression(fn)) && fn_returns_jsx(fn);
 	}
+	const array_from = array_from_call(u);
+	if (array_from) return fn_returns_jsx(array_from.arguments[1] as t.Function);
 	return false;
 }
 
@@ -139,6 +145,15 @@ export function fn_returns_jsx(fn: t.Function): boolean {
 
 function is_map_call(n: t.Node): n is t.CallExpression & { callee: t.MemberExpression | t.OptionalMemberExpression } {
 	return (t.isCallExpression(n) || t.isOptionalCallExpression(n)) && (t.isMemberExpression(n.callee) || t.isOptionalMemberExpression(n.callee)) && t.isIdentifier(n.callee.property, { name: 'map' }) && !n.callee.computed;
+}
+
+function array_from_call(n: t.Node): t.CallExpression | null {
+	if (!t.isCallExpression(n) || !t.isMemberExpression(n.callee) || n.callee.computed || !t.isIdentifier(n.callee.object, { name: 'Array' }) || !t.isIdentifier(n.callee.property, { name: 'from' })) return null;
+	const source = n.arguments[0];
+	const callback = n.arguments[1];
+	if (!t.isObjectExpression(source) || !(t.isArrowFunctionExpression(callback) || t.isFunctionExpression(callback))) return null;
+	const length = source.properties.find((p) => t.isObjectProperty(p) && t.isIdentifier(p.key, { name: 'length' })) as t.ObjectProperty | undefined;
+	return length && t.isExpression(length.value) ? n : null;
 }
 
 /** The name a call or reference renders as a snippet under, if it is one. */
@@ -294,7 +309,11 @@ function attributes(node: t.JSXOpeningElement, tag: string, ctx: JsxCtx): Attrs 
 			const e = unwrap(expr);
 			if (t.isIdentifier(e)) {
 				(dom ? ctx.dom_refs : ctx.component_refs).add(e.name);
-				out.attrs.push(dom ? `bind:this={${e.name}}` : `bind:ref={${e.name}}`);
+				if (ctx.ref_names.has(e.name)) out.attrs.push(dom ? `bind:this={${e.name}}` : `bind:ref={${e.name}}`);
+				else {
+					ctx.warnings.push(`ref={${e.name}} is not backed by a converted useRef; review the generated ref manually`);
+					out.attrs.push(`ref={${e.name}}`);
+				}
 				continue;
 			}
 			if (dom && (t.isArrowFunctionExpression(e) || t.isFunctionExpression(e))) {
@@ -385,8 +404,8 @@ function expression_child(expr: t.Node, ctx: JsxCtx, indent: string): string {
 	if (is_jsx(e)) return render_node(e, ctx, indent);
 	const snip = snippet_ref(e, ctx);
 	if (snip) return `${indent}${render_tag(snip)}`;
-	if (is_map_call(e)) {
-		const each = each_block(e, ctx, indent);
+	if (is_map_call(e) || array_from_call(e)) {
+		const each = each_block(e as t.CallExpression & { callee: t.MemberExpression | t.OptionalMemberExpression }, ctx, indent);
 		if (each) return each;
 	}
 	if (t.isConditionalExpression(e) && is_markup(e, ctx)) return if_chain(e, ctx, indent);
@@ -427,20 +446,30 @@ function if_chain(e: t.ConditionalExpression, ctx: JsxCtx, indent: string): stri
 }
 
 /** Render a list of (test, body) branches as one {#if} chain. The last may have test null (else). */
-export function blocks(branches: { test: t.Expression | null; body: t.Node | null }[], ctx: JsxCtx, indent: string): string {
+function body_empty(body: MarkupBody): boolean {
+	return body == null || (Array.isArray(body) ? body.length === 0 : is_empty(body));
+}
+
+function render_body(body: MarkupBody, ctx: JsxCtx, indent: string): string {
+	if (body == null) return '';
+	if (Array.isArray(body)) return statements_to_markup(body, ctx, indent).markup;
+	return render_node(unwrap(body), ctx, indent);
+}
+
+export function blocks(branches: { test: t.Expression | null; body: MarkupBody }[], ctx: JsxCtx, indent: string): string {
 	// trailing empty else: drop it
 	const list = branches.slice();
-	while (list.length && (list[list.length - 1].body == null || is_empty(list[list.length - 1].body!)) && list[list.length - 1].test == null) list.pop();
+	while (list.length && body_empty(list[list.length - 1].body) && list[list.length - 1].test == null) list.pop();
 	if (!list.length) return '';
-	if (list.length === 1 && list[0].test == null) return render_node(unwrap(list[0].body!), ctx, indent);
+	if (list.length === 1 && list[0].test == null) return render_body(list[0].body, ctx, indent);
 	// a single `c ? null : X` → {#if !c}X{/if}
-	if (list.length === 2 && list[1].test == null && is_empty(list[0].body!)) {
-		return `${indent}{#if ${not(list[0].test!)}}\n${render_node(unwrap(list[1].body!), ctx, indent + '\t')}\n${indent}{/if}`;
+	if (list.length === 2 && list[1].test == null && body_empty(list[0].body)) {
+		return `${indent}{#if ${not(list[0].test!)}}\n${render_body(list[1].body, ctx, indent + '\t')}\n${indent}{/if}`;
 	}
 	let out = '';
 	list.forEach((b, i) => {
 		const head = i === 0 ? `{#if ${gen_inline(b.test!)}}` : b.test ? `{:else if ${gen_inline(b.test)}}` : '{:else}';
-		const body = b.body && !is_empty(b.body) ? render_node(unwrap(b.body), ctx, indent + '\t') : '';
+		const body = !body_empty(b.body) ? render_body(b.body, ctx, indent + '\t') : '';
 		out += `${indent}${head}\n${body ? body + '\n' : ''}`;
 	});
 	return `${out}${indent}{/if}`;
@@ -448,9 +477,11 @@ export function blocks(branches: { test: t.Expression | null; body: t.Node | nul
 
 /** arr.map((item, i) => { const x = …; if (c) return null; return <li key={item.id}>…</li> }) */
 function each_block(call: t.CallExpression & { callee: t.MemberExpression | t.OptionalMemberExpression }, ctx: JsxCtx, indent: string): string | null {
-	const arr = gen_inline(call.callee.object);
-	const fn = call.arguments[0];
-	if (t.isIdentifier(fn)) {
+	const from = array_from_call(call);
+	const length_prop = from ? (from.arguments[0] as t.ObjectExpression).properties.find((p): p is t.ObjectProperty => t.isObjectProperty(p) && t.isIdentifier(p.key, { name: 'length' })) : null;
+	const arr = from && length_prop ? gen_inline(length_prop.value) : gen_inline(call.callee.object);
+	const fn = from ? call.arguments[1] : call.arguments[0];
+	if (!from && t.isIdentifier(fn)) {
 		// items.map(renderItem)
 		const call_src = ctx.snippets.has(fn.name) ? `{@render ${fn.name}(item, index)}` : `{${fn.name}(item, index)}`;
 		return `${indent}{#each ${arr} as item, index}\n${indent}\t${call_src}\n${indent}{/each}`;
@@ -458,6 +489,7 @@ function each_block(call: t.CallExpression & { callee: t.MemberExpression | t.Op
 	if (!t.isArrowFunctionExpression(fn) && !t.isFunctionExpression(fn)) return null;
 	const item = fn.params[0] ? gen_pattern(fn.params[0]) : '_';
 	const idx = fn.params[1] && t.isIdentifier(fn.params[1]) ? fn.params[1].name : null;
+	const extra = !from && fn.params[2] && t.isIdentifier(fn.params[2]) ? `{@const ${fn.params[2].name} = ${arr}}\n` : '';
 	const inner = indent + '\t';
 	let body: string;
 	let key: string | null = null;
@@ -471,7 +503,7 @@ function each_block(call: t.CallExpression & { callee: t.MemberExpression | t.Op
 		body = render_node(b, ctx, inner);
 	}
 	const head = `${arr} as ${item}${idx ? `, ${idx}` : ''}${key ? ` (${key})` : ''}`;
-	return `${indent}{#each ${head}}\n${body}\n${indent}{/each}`;
+	return `${indent}{#each ${head}}\n${extra ? indent + '\t' + extra : ''}${body}\n${indent}{/each}`;
 }
 
 /**
@@ -480,7 +512,7 @@ function each_block(call: t.CallExpression & { callee: t.MemberExpression | t.Op
  */
 export function statements_to_markup(stmts: t.Statement[], ctx: JsxCtx, indent: string, want_key = false): { markup: string; key: string | null } {
 	const consts: string[] = [];
-	const branches: { test: t.Expression | null; body: t.Node | null }[] = [];
+	const branches: { test: t.Expression | null; body: MarkupBody }[] = [];
 	let key: string | null = null;
 	for (const s of stmts) {
 		if (t.isVariableDeclaration(s)) {
@@ -491,6 +523,7 @@ export function statements_to_markup(stmts: t.Statement[], ctx: JsxCtx, indent: 
 			continue;
 		}
 		if (t.isIfStatement(s)) {
+			const consequent = t.isBlockStatement(s.consequent) ? s.consequent.body : [s.consequent];
 			const ret = sole_return(s.consequent);
 			if (ret) {
 				branches.push({ test: s.test, body: ret.argument ?? null });
@@ -504,6 +537,10 @@ export function statements_to_markup(stmts: t.Statement[], ctx: JsxCtx, indent: 
 				}
 				continue;
 			}
+			if (consequent.some((item) => t.isReturnStatement(item) && item.argument && is_jsxish(item.argument))) {
+				branches.push({ test: s.test, body: consequent });
+				continue;
+			}
 		}
 		if (t.isReturnStatement(s)) {
 			branches.push({ test: null, body: s.argument ?? null });
@@ -513,7 +550,6 @@ export function statements_to_markup(stmts: t.Statement[], ctx: JsxCtx, indent: 
 		if (t.isEmptyStatement(s)) continue;
 		ctx.warnings.push(`statement inside a render callback isn't converted: ${gen_inline(s).slice(0, 60)}`);
 	}
-	// an early `return null` with no other branch content: {#if !c}rest{/if}
 	const markup = blocks(branches, ctx, indent);
 	return { markup: [...consts, markup].filter(Boolean).join('\n'), key };
 }

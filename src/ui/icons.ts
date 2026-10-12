@@ -1,6 +1,8 @@
 /**
- * The icon set: Lucide SVGs copied into assets/icons/ (see its LICENSE). To add one,
- * copy `<name>.svg` there and add the name here; GPUI tints `<svg src>` with `color`.
+ * The icon set: Lucide SVGs copied into assets/icons/ (see its LICENSE), plus the
+ * app's own marks. To add one, copy `<name>.svg` there and add the name here;
+ * GPUI tints `<svg src>` with `color`, so icons must paint with `currentColor`
+ * (hardcoded colours, e.g. black, render as-is and vanish in dark mode).
  */
 
 import { fileURLToPath } from 'node:url';
@@ -41,8 +43,33 @@ export const ICONS = [
 	'history',
 	'panel-left-close',
 	'panel-right-close',
+	'panel-agent-open',
+	'panel-agent-close',
+	'css-sass',
+	'svelte-react',
 	'at-sign',
 	'mic',
+	'folder',
+	'folder-open',
+	'pin',
+	'archive',
+	'pencil',
+	'git-branch',
+	'git-fork',
+	'lock',
+	'shield-check',
+	'shield-off',
+	'list-checks',
+	'compass',
+	'gauge',
+	'brain',
+	'eye',
+	'chevron-up',
+	'more-horizontal',
+	'arrow-up',
+	'settings-2',
+	'plug',
+	'key'
 ] as const;
 
 export type IconName = (typeof ICONS)[number];

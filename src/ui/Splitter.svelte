@@ -3,22 +3,25 @@
 	// (with `pressedButton`) after a press on it, wherever the pointer goes, so the
 	// drag needs no window listener. Lives inside the panel (`position: relative`),
 	// absolutely placed on the edge that faces the main area.
-	let {
-		edge,
-		width,
-		onresize,
-		oncommit,
-		onreset,
-		testId
-	}: {
-		/** The panel edge it sits on: `right` for the left sidebar, `left` for right ones. */
-		edge: 'left' | 'right';
-		width: number;
-		onresize: (width: number) => void;
-		oncommit?: () => void;
-		onreset?: () => void;
-		testId?: string;
-	} = $props();
+let {
+	edge,
+	width,
+	onresize,
+	oncommit,
+	onreset,
+	onstart,
+	testId
+ }: {
+	/** The panel edge it sits on: `right` for the left sidebar, `left` for right ones. */
+	edge: 'left' | 'right';
+	width: number;
+	onresize: (width: number) => void;
+	oncommit?: () => void;
+	onreset?: () => void;
+	/** Fires when a drag begins (after the double-press reset check). */
+	onstart?: () => void;
+	testId?: string;
+ } = $props();
 
 	let dragging = $state(false);
 	let start_x = 0;
@@ -43,8 +46,8 @@
 		dragging = true;
 		start_x = e.x ?? 0;
 		start_w = width;
+		onstart?.();
 	}
-
 	function move(e: Pointer) {
 		if (!dragging) return;
 		if (e.pressedButton !== 0) return end(); // released outside the window

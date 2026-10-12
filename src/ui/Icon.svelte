@@ -6,7 +6,7 @@
 	// when an icon must change with state.
 	let {
 		name,
-		size = 'md',
+		size = 'sm',
 		tone = 'inherit'
 	}: {
 		name: IconName;
@@ -18,11 +18,8 @@
 <svg
 	src={icon_path(name)}
 	class="wb-icon"
-	class:wb-icon-sm={size === 'sm'}
+	class:wb-icon-md={size === 'md'}
 	class:wb-icon-lg={size === 'lg'}
-	class:text-primary={tone === 'primary'}
-	class:text-secondary={tone === 'secondary'}
-	class:text-muted={tone === 'muted'}
 	class:wb-text-accent={tone === 'accent'}
 	class:wb-text-on-accent={tone === 'on-accent'}
 ></svg>

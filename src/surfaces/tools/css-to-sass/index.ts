@@ -13,7 +13,7 @@ function diff_badge() {
 export default {
 	id: 'css-to-sass',
 	title: 'CSS ⇄ Sass',
-	icon: 'braces',
+	icon: 'css-sass',
 	description: 'Convert CSS to indented Sass, nesting where it is safe, or compile Sass and SCSS to CSS.',
 	component: CssToSass,
 	toolbar: Toolbar,

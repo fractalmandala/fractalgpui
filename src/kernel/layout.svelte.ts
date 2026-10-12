@@ -4,8 +4,8 @@
  *   section-sidebar-left | section-main | section-sidebar-panel | section-sidebar-right
  *
  * section-main is never collapsible. The three sidebars are:
- * - sidebar-left: open by default; collapsed, it is a 52px icon rail. Its state is
- *   app-wide (it carries the surface nav), and persists.
+ * - sidebar-left: open by default; collapsed, it animates to 0 width (no rail).
+ *   Its state is app-wide (it carries the surface nav), and persists.
  * - sidebar-panel, sidebar-right: collapsed by default. Each surface may declare its
  *   own defaults (`Surface.collapsed`); the user's toggles are then kept per surface,
  *   so switching surfaces restores that surface's own state.
@@ -56,10 +56,15 @@ export const LIMITS: Record<Region, { min: number; max: number; readonly default
 /** Open/collapsed when neither the user nor the surface has said otherwise (wireframe: collapsed-default). */
 export const DEFAULT_COLLAPSED: Record<SurfaceRegion, boolean> = { 'sidebar-panel': true, 'sidebar-right': true };
 
-/** Width of the collapsed left sidebar (icons only). */
-export const RAIL = 52;
 /** section-main never gets narrower than this when sidebars are fitted. */
-export const MAIN_MIN = 420;
+ export const MAIN_MIN = 420;
+
+/**
+  * Collapse/expand transition length (seconds, for the native `motion` prop).
+  * Instant under headless tests (memory clipboard), so widths assert
+  * deterministically; real motion in production.
+  */
+ export const motion_duration = () => (process.env.FRACTALGPUI_CLIPBOARD === 'memory' ? 0 : 0.2);
 
 export type Widths = Partial<Record<Region, number>>;
 export type Collapsed = Partial<Record<SurfaceRegion, boolean>>;
@@ -115,19 +120,30 @@ export function toggle_all(s: SurfaceLayout) {
 	for (const r of REGIONS) set_collapsed(r, s, open);
 }
 
-export type Shown = { 'sidebar-left': 'open' | 'rail'; 'sidebar-panel': boolean; 'sidebar-right': boolean };
+ export type Shown = Record<Region, boolean>;
+
+/** User-choice openness, before window fitting (true = the user wants it open). */
+ export function shown_state(s: SurfaceLayout): Shown {
+	return {
+		'sidebar-left': !is_collapsed('sidebar-left', s),
+		'sidebar-panel': !is_collapsed('sidebar-panel', s),
+		'sidebar-right': !is_collapsed('sidebar-right', s)
+	};
+ }
 
 /**
- * Which sidebars to actually show for a window width: the user's (or surface's)
- * choice first, then sidebar-right and sidebar-panel drop out (in that order) while
- * section-main would be narrower than MAIN_MIN.
- */
-export function fit(window_width: number, s: SurfaceLayout, widths: Record<Region, number>): Shown {
-	const left = is_collapsed('sidebar-left', s) ? 'rail' : 'open';
-	let panel = !is_collapsed('sidebar-panel', s);
-	let right = !is_collapsed('sidebar-right', s);
-	const used = () => (left === 'open' ? widths['sidebar-left'] : RAIL) + (panel ? widths['sidebar-panel'] : 0) + (right ? widths['sidebar-right'] : 0);
-	if (right && window_width - used() < MAIN_MIN) right = false;
-	if (panel && window_width - used() < MAIN_MIN) panel = false;
-	return { 'sidebar-left': left, 'sidebar-panel': panel, 'sidebar-right': right };
-}
+  * Openness plus whether each sidebar fits the window. Collapsed sidebars stay
+  * mounted at 0 width (animated through the `motion` prop); sidebar-panel and
+  * sidebar-right unmount only when the window has no room for them
+  * (sidebar-right first), without touching what the user chose.
+  */
+export function fit(window_width: number, s: SurfaceLayout, widths: Record<Region, number>): { open: Shown; fits: Shown } {
+	const open = shown_state(s);
+	// Room for each sidebar, assuming it were open: collapsed ones stay mounted
+	// (width animates to 0) and only lose their mount when the window is narrow.
+	const fits: Shown = { 'sidebar-left': true, 'sidebar-panel': true, 'sidebar-right': true };
+	const used = () => (open['sidebar-left'] ? widths['sidebar-left'] : 0) + (open['sidebar-panel'] && fits['sidebar-panel'] ? widths['sidebar-panel'] : 0) + (open['sidebar-right'] && fits['sidebar-right'] ? widths['sidebar-right'] : 0);
+	if (open['sidebar-right'] && window_width - used() < MAIN_MIN) fits['sidebar-right'] = false;
+	if (open['sidebar-panel'] && window_width - used() < MAIN_MIN) fits['sidebar-panel'] = false;
+	return { open, fits };
+ }

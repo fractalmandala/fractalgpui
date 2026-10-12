@@ -14,7 +14,7 @@
 	// window height (polled by the shell; there is no resize event). Its row pitch is
 	// fixed (26px, whatever the font-size or line-height); the output <code> takes the
 	// same pitch through .wb-code so the two panes' lines sit level.
-	const row = $derived(parseFloat(design.tokens.light['wb-textarea-row'] ?? '26') || 26);
+	const row = $derived(parseFloat(design.tokens.light['textarea-row'] ?? '26') || 26);
 	const rows = $derived(Math.max(6, Math.min(60, Math.floor((win.height - 240) / row))));
 
 	const summary = $derived.by(() => {
@@ -37,7 +37,7 @@
 			<text class="wb-label">{forward ? 'CSS' : 'Sass'}</text>
 			{#if forward}
 				<textarea
-					class="wb-editor border radius-sm pad-sm mono text-sm"
+					class="wb-editor border radius-sm pad-sm mono text-md"
 					testId="css-input"
 					placeholder="Paste CSS here…"
 					minRows={rows}
@@ -47,7 +47,7 @@
 				></textarea>
 			{:else}
 				<textarea
-					class="wb-editor border radius-sm pad-sm mono text-sm"
+					class="wb-editor border radius-sm pad-sm mono text-md"
 					testId="sass-input"
 					placeholder="Paste Sass or SCSS here…"
 					minRows={rows}
@@ -67,7 +67,7 @@
 				<!-- <code> paints its base text in `color` (default: a pale grey meant for dark backgrounds). -->
 				{#if outcome}
 					{#if outcome.ok}
-						<code class="wb-code text-primary shrink-0" testId="sass-output" code={outcome.result.sass} language="sass" showLineNumbers></code>
+						<code class="wb-code text-primary shrink-0" testId="sass-output" code={outcome.result.sass} language="css" showLineNumbers></code>
 					{:else}
 						<text class="text-sm text-danger" testId="sass-error">{outcome.error}</text>
 					{/if}

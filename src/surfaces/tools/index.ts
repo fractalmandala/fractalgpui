@@ -4,6 +4,7 @@ import { TOOLS } from './registry.ts';
 import Sidebar from './Sidebar.svelte';
 import { active_tool, select_tool } from './state.svelte.ts';
 import Toolbar from './Toolbar.svelte';
+import PanelPrimary from '../agents/PanelPrimary.svelte';
 import Tools from './Tools.svelte';
 
 // One surface hosting every tool (src/surfaces/tools/<id>/, see types.ts).
@@ -14,7 +15,7 @@ export default {
 	description: TOOLS.map((t) => t.title).join(' · '),
 	component: Tools,
 	toolbar: Toolbar,
-	sections: { 'sidebar-left': { body: Sidebar } },
+	sections: { 'sidebar-left': { body: Sidebar }, 'sidebar-panel': { body: PanelPrimary } },
 	tabs: {
 		list: () => active_tool().tabs?.list() ?? [],
 		value: () => active_tool().tabs?.value() ?? '',

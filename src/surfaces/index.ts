@@ -5,8 +5,10 @@
  */
 
 import type { Surface } from '../kernel/types.ts';
+import agents from './agents/index.ts';
 import home from './home/index.ts';
+import settings from './settings/index.ts';
 import tools from './tools/index.ts';
 
-export const SURFACES: Surface[] = [home, tools];
+export const SURFACES: Surface[] = [home, tools, agents, settings];
 

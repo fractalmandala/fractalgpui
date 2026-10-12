@@ -42,9 +42,13 @@ export interface Surface {
 	};
 	/** Whether sidebar-panel / sidebar-right start collapsed on this surface (default: collapsed). */
 	collapsed?: Collapsed;
-	/** Actions in the title bar, right of the title. */
+	/**
+	 * Header contract: the main header owns the whole strip — sidebar-left toggle,
+	 * the surface's `tabs` in the dynamic middle, then `toolbar` actions and the
+	 * panel toggles on the right. A surface never renders its own header row.
+	 */
 	toolbar?: AnyComponent;
-	/** A tab row above the content; the surface keeps the value in its state. */
+	/** The surface's tabs, shown in the main header's middle; the surface keeps the value in its state. */
 	tabs?: { list: () => Tab[]; value: () => string; select: (id: string) => void };
 	/** Default panel widths until the user resizes them on this surface. */
 	layout?: Widths;

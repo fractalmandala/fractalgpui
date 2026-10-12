@@ -331,8 +331,47 @@ describe('CSS-in-JS and custom hooks', () => {
 		const r = svelte(SAMPLES[7].source);
 		expect(r.warnings.join()).toContain('useDebounce() is a custom React hook');
 	});
-	test('class components are reported', () => {
-		expect(() => react_to_svelte(`import React from 'react';\nexport default class A extends React.Component { render() { return <p />; } }`)).toThrow(ReactConvertError);
+	test('named export lists do not re-export generated Svelte components', () => {
+		const r = svelte(`import { useState } from 'preact/hooks';\nconst DropdownMenu = () => { const [open] = useState(false); return <div>{open ? 'open' : 'closed'}</div>; };\nexport { DropdownMenu };`);
+		expect(r.svelte).not.toContain('export { DropdownMenu }');
+		expect(r.files[0].name).toBe('DropdownMenu.svelte');
+	});
+	test('external custom hooks remain in the component while supported hooks convert', () => {
+		const r = svelte(`import { useEffect } from 'react';\nimport { useAppStore } from './store';\nexport default function EditorApp() {\n const screen = useAppStore((state) => state.screen);\n useEffect(() => { document.title = screen; }, [screen]);\n return <div>{screen}</div>;\n}`);
+		expect(r.svelte).toContain('const screen = useAppStore(state => state.screen);');
+		expect(r.svelte).toContain('$effect(() =>');
+		expect(r.warnings.join()).toContain('useAppStore() is a custom React hook');
+	});
+});
+
+describe('legacy class components', () => {
+	test('constructor state, props, methods and bound handlers convert', () => {
+		const out = main(`import { Component } from 'preact';\nexport default class AddLibrary extends Component {\n constructor(props) { super(props); this.state = { value: props.initial || '', untouched: true }; }\n update(e) { this.setState((previous) => ({ value: e.target.value })); }\n render() { return <input value={this.state.value} onChange={this.update.bind(this)} />; }\n}`);
+		expect(out).toContain('let __state = $state({ value: props.initial || \'\', untouched: true });');
+		expect(out).toContain('...__previousState');
+		expect(out).toContain('value: e.target.value');
+		expect(out).toContain('oninput={update}');
+		expect(out).not.toContain('this.');
+		expect(out).not.toContain('.bind(this)');
+	});
+	test('class render locals can reuse the name props', () => {
+		const out = main(`import { Component } from 'preact';\nclass Clickable extends Component {\n handleClick() { this.props.onClick?.(); }\n render() { const { onClick, ...props } = this.props; return <button onClick={this.handleClick.bind(this)} {...props} />; }\n}`);
+		expect(out).toContain('let props2 = $props();');
+		expect(out).toContain('let { onClick, ...props } = $derived(props2);');
+		expect(out).not.toContain('this.');
+	});
+	test('render-only classes convert and shouldComponentUpdate is warned', () => {
+		const r = svelte(`import { Component } from 'preact';\nexport class Alerts extends Component {\n shouldComponentUpdate() { return false; }\n render() { return <div className="alerts" />; }\n}`);
+		expect(r.svelte).toContain('<div class="alerts"></div>');
+		expect(r.warnings.join()).toContain('shouldComponentUpdate has no direct Svelte equivalent');
+	});
+	test('mount and unmount lifecycle methods become a mount effect with cleanup', () => {
+		const out = main(`import React, { Component } from 'react';\nexport default class A extends Component {\n componentDidMount() { document.title = 'ready'; }\n componentWillUnmount() { document.title = ''; }\n render() { return <p>ready</p>; }\n}`);
+		expect(out).toContain('onMount(() =>');
+		expect(out).toContain('return () => {');
+	});
+	test('unsupported lifecycle behavior is rejected explicitly', () => {
+		expect(() => react_to_svelte(`import React, { Component } from 'react';\nexport default class A extends Component {\n componentDidUpdate() { document.title = 'updated'; }\n render() { return <p />; }\n}`)).toThrow('componentDidUpdate has no safe Svelte equivalent');
 	});
 });
 
@@ -346,8 +385,8 @@ describe('errors', () => {
 			expect((err as ReactConvertError).line).toBe(2);
 		}
 	});
-	test('no component', () => {
-		expect(() => react_to_svelte('export const x = 1;')).toThrow('No React component found');
+	test('utility-only modules are rejected as non-components', () => {
+		expect(() => react_to_svelte('export type Point = { x: number; y: number };\nexport const x = 1;')).toThrow('contains no JSX component');
 	});
 });
 

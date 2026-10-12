@@ -1,35 +1,32 @@
 <script lang="ts">
-	import Icon from './Icon.svelte';
-	import type { IconName } from './icons.ts';
-
 	// The app's button: `.wb-btn` (src/styles/_own.sass). `variant` and `active` only
-	// toggle classes; nothing is styled inline. Primary is the green accent with black text.
+	// toggle classes; nothing is styled inline. Primary is the green accent with white text.
 	let {
 		label,
 		onclick,
 		variant = 'default',
-		icon,
 		active = false,
 		testId
 	}: {
 		label: string;
 		onclick: () => void;
-		variant?: 'default' | 'primary' | 'ghost';
-		icon?: IconName;
+		variant?: 'default' | 'primary' | 'ghost' | 'danger';
 		active?: boolean;
 		testId?: string;
 	} = $props();
 </script>
 
+<!-- svelte-ignore a11y_click_events_have_key_events -->
+<!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
 	class="wb-btn row ycenter gap-xs"
 	class:primary={variant === 'primary'}
 	class:ghost={variant === 'ghost'}
+	class:danger={variant === 'danger'}
 	class:active
 	hitbox="self"
 	{testId}
 	{onclick}
 >
-	{#if icon}<Icon name={icon} size="sm" tone={variant === 'primary' ? 'on-accent' : 'secondary'} />{/if}
 	<text>{label}</text>
 </div>

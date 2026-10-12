@@ -6,12 +6,31 @@ import * as t from '@babel/types';
 // Babel ships these as interop default exports.
 const generate = ((_generate as unknown as { default?: typeof _generate }).default ?? _generate) as typeof _generate;
 
+function detached(node: t.Node): t.Node {
+	const copy = t.cloneNode(node, true) as t.Node;
+	const strip = (value: t.Node) => {
+		const record = value as unknown as Record<string, unknown>;
+		delete record.loc;
+		delete record.start;
+		delete record.end;
+		delete record.extra;
+		for (const key of t.VISITOR_KEYS[value.type] ?? []) {
+			const child = record[key];
+			if (Array.isArray(child)) {
+				for (const item of child) if (item && typeof item === 'object' && 'type' in item) strip(item as t.Node);
+			} else if (child && typeof child === 'object' && 'type' in child) strip(child as t.Node);
+		}
+	};
+	strip(copy);
+	return copy;
+}
+
 /** Multi-line, for script statements. */
-export const gen = (node: t.Node): string => generate(node, { jsescOption: { minimal: true } }).code;
+export const gen = (node: t.Node): string => generate(detached(node), { jsescOption: { minimal: true } }).code;
 
 /** One line, for template expressions and attribute values. */
 export const gen_inline = (node: t.Node): string =>
-	generate(node, { concise: true, jsescOption: { minimal: true } })
+	generate(detached(node), { concise: true, jsescOption: { minimal: true } })
 		.code.replace(/;\s*$/, '')
 		.trim();
 

@@ -11,7 +11,7 @@
 	// GPUI's textarea sizes to its rows and scrolls inside, so fill the pane from the
 	// window height (polled by the shell). Its row pitch is fixed (26px); the output
 	// <code> takes the same pitch through .wb-code so the two panes' lines sit level.
-	const row = $derived(parseFloat(design.tokens.light['wb-textarea-row'] ?? '26') || 26);
+	const row = $derived(parseFloat(design.tokens.light['textarea-row'] ?? '26') || 26);
 	const rows = $derived(Math.max(6, Math.min(60, Math.floor((win.height - 240 - warnings.length * 20) / row))));
 
 	const summary = $derived.by(() => {
@@ -26,7 +26,7 @@
 		<div class="box grow min0 gap-xs">
 			<text class="wb-label">React (TSX)</text>
 			<textarea
-				class="wb-editor border radius-sm pad-sm mono text-sm"
+				class="wb-editor border radius-sm pad-sm mono text-md"
 				testId="react-input"
 				placeholder="Paste a React component here…"
 				minRows={rows}

@@ -17,6 +17,16 @@ export interface Allowance {
 export const ALLOWED: Allowance[] = [
 	{
 		class: 'input',
+		match: /attribute selectors have no GPUI equivalent/,
+		why: 'The sheet styles input variants via [data-variant] / [data-size]; GPUI has no attribute selectors, and the app sets none, so only the base .input rule applies.'
+	},
+	{
+		class: 'input',
+		match: /GPUI has no CSS transitions/,
+		why: 'GPUI has no CSS transitions; the app animates through the `motion` prop.'
+	},
+	{
+		class: 'input',
 		match: /:focus-visible/,
 		why: 'GPUI inputs show focus with their own caret; there is no :focus-visible to restyle.'
 	},

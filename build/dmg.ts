@@ -63,18 +63,16 @@ exec "$RES/bun" node_modules/gpuix-svelte/bin/gpuix-svelte.js --bun app.ts "$@"
 );
 chmodSync(launcher, 0o755);
 
-// 4. Icon: the app mark, drawn by build/icon.swift, as an .icns.
+// 4. Icon: assets/app-icon.png (1024px), as an .icns.
 const iconset = join(OUT, `${NAME}.iconset`);
 mkdirSync(iconset);
-const png = join(OUT, 'icon-1024.png');
-run('swift', [join(ROOT, 'build/icon.swift'), png]);
+const png = join(ROOT, 'assets/app-icon.png');
 for (const s of [16, 32, 128, 256, 512]) {
 	run('sips', ['-z', String(s), String(s), png, '--out', join(iconset, `icon_${s}x${s}.png`)]);
 	run('sips', ['-z', String(s * 2), String(s * 2), png, '--out', join(iconset, `icon_${s}x${s}@2x.png`)]);
 }
 run('iconutil', ['-c', 'icns', iconset, '-o', join(RES, `${NAME}.icns`)]);
 rmSync(iconset, { recursive: true });
-rmSync(png);
 
 // 5. Info.plist.
 writeFileSync(

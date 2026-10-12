@@ -22,8 +22,9 @@ import { parse } from '@babel/parser';
 import _traverse, { type NodePath } from '@babel/traverse';
 import * as t from '@babel/types';
 import { gen, gen_inline } from './gen.ts';
-import { blocks, fn_returns_jsx, is_jsxish, render_node, snippet_block, sole_return, statements_to_markup, unwrap, type JsxCtx } from './jsx.ts';
+import { blocks, fn_returns_jsx, is_jsxish, render_node, snippet_block, sole_return, statements_to_markup, unwrap, type JsxCtx, type MarkupBody } from './jsx.ts';
 import { is_node_type, is_render_fn_type, map_react_types, new_type_use, type TypeUse } from './types.ts';
+import { normalize_class_components } from './class-to-function.ts';
 
 const traverse = ((_traverse as unknown as { default?: typeof _traverse }).default ?? _traverse) as typeof _traverse;
 
@@ -66,19 +67,19 @@ interface Found {
 }
 
 const CSS_IN_JS = new Set(['styled-components', '@emotion/styled', '@emotion/react', '@emotion/css', 'styled-jsx', '@stitches/react', '@vanilla-extract/css', 'goober', '@linaria/core', '@linaria/react', 'linaria']);
-const REACT_SOURCES = (s: string) => s === 'react' || s === 'react-dom' || s.startsWith('react/') || s.startsWith('react-dom/');
-const KNOWN_HOOKS = new Set(['useState', 'useEffect', 'useLayoutEffect', 'useInsertionEffect', 'useMemo', 'useRef', 'useCallback', 'useReducer', 'useContext', 'useId', 'useImperativeHandle', 'useTransition', 'useDeferredValue', 'useSyncExternalStore', 'useDebugValue', 'useOptimistic', 'useActionState']);
+export const REACT_SOURCES = (s: string) => s === 'react' || s === 'react-dom' || s.startsWith('react/') || s.startsWith('react-dom/');
+export const KNOWN_HOOKS = new Set(['useState', 'useEffect', 'useLayoutEffect', 'useInsertionEffect', 'useMemo', 'useRef', 'useCallback', 'useReducer', 'useContext', 'useId', 'useImperativeHandle', 'useTransition', 'useDeferredValue', 'useSyncExternalStore', 'useDebugValue', 'useOptimistic', 'useActionState']);
 
 const is_component_name = (s: string) => /^[A-Z]/.test(s);
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-function callee_name(e: t.Node): string | null {
+export function callee_name(e: t.Node): string | null {
 	if (t.isIdentifier(e)) return e.name;
 	if (t.isMemberExpression(e) && t.isIdentifier(e.object, { name: 'React' }) && t.isIdentifier(e.property) && !e.computed) return e.property.name;
 	return null;
 }
 
-function hook_call(e: t.Node | null | undefined): { name: string; call: t.CallExpression } | null {
+export function hook_call(e: t.Node | null | undefined): { name: string; call: t.CallExpression } | null {
 	if (!e) return null;
 	const u = unwrap(e);
 	if (!t.isCallExpression(u)) return null;
@@ -86,10 +87,10 @@ function hook_call(e: t.Node | null | undefined): { name: string; call: t.CallEx
 	return name && /^use[A-Z]/.test(name) ? { name, call: u } : null;
 }
 
-const type_args = (call: t.CallExpression): t.TSType[] => (call.typeArguments?.params ?? []) as t.TSType[];
+export const type_args = (call: t.CallExpression): t.TSType[] => (call.typeArguments?.params ?? []) as t.TSType[];
 
 /** Names an expression reads (approximate: identifiers that are not property keys). */
-function reads(node: t.Node): Set<string> {
+export function reads(node: t.Node): Set<string> {
 	const out = new Set<string>();
 	const visit = (n: t.Node, parent: t.Node | null) => {
 		if (t.isIdentifier(n)) {
@@ -114,7 +115,7 @@ function reads(node: t.Node): Set<string> {
 }
 
 /** Names read synchronously (outside nested functions): what an $effect tracks. */
-function sync_reads(node: t.Node): Set<string> {
+export function sync_reads(node: t.Node): Set<string> {
 	const out = new Set<string>();
 	const visit = (n: t.Node, parent: t.Node | null) => {
 		if (t.isFunction(n)) return;
@@ -135,7 +136,7 @@ function sync_reads(node: t.Node): Set<string> {
 }
 
 /** Names assigned in `node` outside nested functions (what runs during render). */
-function render_writes(node: t.Node): Set<string> {
+export function render_writes(node: t.Node): Set<string> {
 	const out = new Set<string>();
 	const visit = (n: t.Node) => {
 		if (t.isFunction(n)) return;
@@ -151,7 +152,7 @@ function render_writes(node: t.Node): Set<string> {
 	return out;
 }
 
-const has_jsx = (node: t.Node) => {
+export const has_jsx = (node: t.Node) => {
 	let found = false;
 	t.traverseFast(node, (n) => {
 		if (t.isJSXElement(n) || t.isJSXFragment(n)) found = true;
@@ -159,7 +160,7 @@ const has_jsx = (node: t.Node) => {
 	return found;
 };
 
-function indent(text: string, by = '\t'): string {
+export function indent(text: string, by = '\t'): string {
 	return text
 		.split('\n')
 		.map((l) => (l.trim() ? by + l : ''))
@@ -222,14 +223,11 @@ function discover(ast: t.File): Discovery {
 				const fn = unwrap_component(v.init, info);
 				if (fn) add(v.id.name, fn, stmt, info);
 			}
-		} else if (t.isClassDeclaration(decl) && decl.superClass && /Component$/.test(gen_inline(decl.superClass))) {
-			d.warnings.push(`class component ${decl.id?.name ?? ''} isn't converted: rewrite it as a function component first`);
 		} else if (t.isExportDefaultDeclaration(stmt)) {
 			const dd = stmt.declaration;
 			if (t.isFunctionDeclaration(dd)) add(dd.id?.name ?? 'Component', dd, stmt, {}, true);
 			else if (t.isIdentifier(dd)) default_name = dd.name;
-			else if (t.isClassDeclaration(dd)) d.warnings.push('class component (default export) isn\'t converted: rewrite it as a function component first');
-			else if (t.isExpression(dd)) {
+			else if (!t.isClassDeclaration(dd) && t.isExpression(dd)) {
 				const inner = unwrap(dd);
 				// export default memo(Foo)
 				if (t.isCallExpression(inner) && t.isIdentifier(inner.arguments[0]) && ['memo', 'forwardRef'].includes(callee_name(inner.callee) ?? '')) default_name = inner.arguments[0].name;
@@ -409,6 +407,7 @@ interface FileCtx {
 	ast: t.File;
 	react: Set<string>;
 	paths: Map<t.Node, NodePath<t.Function>>;
+	jsx_helpers: t.FunctionDeclaration[];
 	contexts: Map<string, { def: t.Expression | null; type: t.TSType | null }>;
 	styled: Map<string, { tag: string; cls: string }>;
 	types: TypeUse;
@@ -503,9 +502,41 @@ function convert_component(c: Found, fc: FileCtx, analysis: ReturnType<typeof an
 	const optional = new Set<string>(props.snippets);
 	const script: string[] = [...props.nested];
 	const local_snippets: { name: string; params: string; body: t.Node | t.Statement[] }[] = [];
-	const branches: { test: t.Expression | null; body: t.Node | null }[] = [];
+	for (const helper of fc.jsx_helpers) {
+		if (!helper.id) continue;
+		snippets.add(helper.id.name);
+		local_snippets.push({ name: helper.id.name, params: helper.params.map((p) => gen_pattern_safe(p)).join(', '), body: helper.body.body });
+	}
+	const branches: { test: t.Expression | null; body: MarkupBody }[] = [];
 	let final: t.Node | null = t.isBlockStatement(c.fn.body) ? null : c.fn.body;
 	const state_names = new Set([...states.values()].map((s) => s.name));
+
+	const branch_body = (statements: t.Statement[]): MarkupBody | null => {
+		if (!statements.length) return null;
+		const last = statements[statements.length - 1];
+		if (t.isReturnStatement(last)) return statements.length === 1 ? last.argument ?? null : statements;
+		return statements;
+	};
+	const branch_statements = (statement: t.Statement): { test: t.Expression | null; body: MarkupBody }[] | null => {
+		if (t.isIfStatement(statement)) {
+			const consequent = t.isBlockStatement(statement.consequent) ? statement.consequent.body : [statement.consequent];
+			const out: { test: t.Expression | null; body: MarkupBody }[] = [{ test: statement.test, body: branch_body(consequent) }];
+			if (statement.alternate) {
+				if (t.isIfStatement(statement.alternate)) out.push(...(branch_statements(statement.alternate) ?? []));
+				else out.push({ test: null, body: branch_body(t.isBlockStatement(statement.alternate) ? statement.alternate.body : [statement.alternate]) });
+			}
+			return out;
+		}
+		if (t.isSwitchStatement(statement)) {
+			const out: { test: t.Expression | null; body: MarkupBody }[] = [];
+			for (const c of statement.cases) {
+				const test = c.test ? t.binaryExpression('===', t.cloneNode(statement.discriminant, true) as t.Expression, t.cloneNode(c.test, true) as t.Expression) : null;
+				out.push({ test, body: branch_body(c.consequent) });
+			}
+			return out;
+		}
+		return null;
+	};
 
 	// lets assigned during render (`let label = 'a'; if (x) label = 'b'`): fold into $derived.by
 	const render_lets = new Map<string, { decl: t.VariableDeclarator; kind: string; stmts: t.Statement[] }>();
@@ -538,6 +569,14 @@ function convert_component(c: Found, fc: FileCtx, analysis: ReturnType<typeof an
 
 	for (const stmt of body) {
 		if (folded.has(stmt)) continue;
+		const rendered_branches = branch_statements(stmt);
+		if (rendered_branches && rendered_branches.some((branch) => {
+			const body = branch.body;
+			return body != null && (Array.isArray(body) ? body.some((item) => t.isReturnStatement(item) && item.argument && is_jsxish(item.argument)) : is_jsxish(body));
+		})) {
+			branches.push(...rendered_branches);
+			continue;
+		}
 		// early returns
 		if (t.isIfStatement(stmt)) {
 			const ret = sole_return(stmt.consequent);
@@ -573,6 +612,7 @@ function convert_component(c: Found, fc: FileCtx, analysis: ReturnType<typeof an
 			continue;
 		}
 		if (t.isFunctionDeclaration(stmt)) {
+			if (stmt.id && fn_returns_jsx(stmt)) snippets.add(stmt.id.name);
 			if (stmt.id && snippets.has(stmt.id.name)) {
 				local_snippets.push({ name: stmt.id.name, params: stmt.params.map((p) => gen_pattern_safe(p)).join(', '), body: stmt.body.body });
 				continue;
@@ -613,7 +653,7 @@ function convert_component(c: Found, fc: FileCtx, analysis: ReturnType<typeof an
 		}
 		if (is_reactive_expr(init)) {
 			mark(d.id);
-			const ann = t.isIdentifier(d.id) && d.id.typeAnnotation ? gen_inline(d.id.typeAnnotation) : '';
+			const ann = t.isIdentifier(d.id) && d.id.typeAnnotation ? gen_inline(d.id.typeAnnotation.typeAnnotation) : '';
 			const id = t.isIdentifier(d.id) ? d.id.name : gen_inline(d.id);
 			return `let ${id}${ann ? ann.replace(/^:?\s*/, ': ') : ''} = $derived(${gen_inline(d.init)});`;
 		}
@@ -624,7 +664,7 @@ function convert_component(c: Found, fc: FileCtx, analysis: ReturnType<typeof an
 		const id = d.id as t.Identifier;
 		const info = render_lets.get(id.name)!;
 		mark(id);
-		const ann = id.typeAnnotation ? gen_inline(id.typeAnnotation).replace(/^:?\s*/, ': ') : '';
+		const ann = id.typeAnnotation ? gen_inline(id.typeAnnotation.typeAnnotation).replace(/^:?\s*/, ': ') : '';
 		const inner = [`let ${id.name}${ann}${d.init ? ` = ${gen(d.init)}` : ''};`, ...info.stmts.map((s) => gen(s)), `return ${id.name};`].join('\n');
 		return `let ${id.name}${ann} = $derived.by(() => {\n${indent(inner)}\n});`;
 	}
@@ -750,7 +790,7 @@ function convert_component(c: Found, fc: FileCtx, analysis: ReturnType<typeof an
 	}
 
 	// 4. the template: the early-return chain, then the final return
-	const jsx: JsxCtx = { warnings, snippets, optional, dom_refs, component_refs, provides: [], styled: fc.styled, props_id: props.props_id };
+	const jsx: JsxCtx = { warnings, snippets, optional, dom_refs, component_refs, ref_names: new Set(refs.keys()), provides: [], styled: fc.styled, props_id: props.props_id };
 	for (const s of local_snippets) optional.delete(s.name);
 	branches.push({ test: null, body: final });
 	const template = blocks(branches, jsx, '').replace(/\n{3,}/g, '\n\n');
@@ -824,7 +864,7 @@ function effect_hook(h: { name: string; call: t.CallExpression }, state_names: S
 }
 
 /** `prev => expr` applied to `state`: inline the param for an expression body, else call it. */
-function updater(fn: t.ArrowFunctionExpression | t.FunctionExpression, state: string): t.Expression {
+export function updater(fn: t.ArrowFunctionExpression | t.FunctionExpression, state: string): t.Expression {
 	const param = fn.params[0];
 	if (t.isIdentifier(param) && !t.isBlockStatement(fn.body)) return substitute(t.cloneNode(unwrap(fn.body), true) as t.Expression, param.name, state);
 	if (!param) return t.isBlockStatement(fn.body) ? t.callExpression(t.parenthesizedExpression(fn), []) : (unwrap(fn.body) as t.Expression);
@@ -857,6 +897,7 @@ function module_level(ast: t.File, d: Discovery, fc: FileCtx, components: Set<t.
 	const decls: ModuleDecl[] = [];
 	const imports: t.ImportDeclaration[] = [];
 	const styles: string[] = [];
+	const component_names = new Set(d.components.map((c) => c.name));
 	const css_libs = new Map<string, string>(); // local → source
 	for (const stmt of ast.program.body) {
 		if (t.isImportDeclaration(stmt)) {
@@ -873,12 +914,22 @@ function module_level(ast: t.File, d: Discovery, fc: FileCtx, components: Set<t.
 		const decl = t.isExportNamedDeclaration(stmt) ? stmt.declaration : stmt;
 		const exported = t.isExportNamedDeclaration(stmt);
 		if (t.isExportNamedDeclaration(stmt) && !stmt.declaration) {
-			decls.push({ names: [], code: gen(stmt), exported: true, type_only: false });
+			const specs = stmt.specifiers.filter((specifier) => {
+				if (!t.isExportSpecifier(specifier)) return true;
+				const local = t.isIdentifier(specifier.local) ? specifier.local.name : specifier.local.value;
+				return !component_names.has(local);
+			});
+			if (specs.length) {
+				const copy = t.cloneNode(stmt, true);
+				copy.specifiers = specs;
+				decls.push({ names: [], code: gen(copy), exported: true, type_only: false });
+			}
 			continue;
 		}
 		if (t.isVariableDeclaration(decl)) {
 			const kept: t.VariableDeclarator[] = [];
 			for (const v of decl.declarations) {
+				if (t.isClassExpression(v.init) && v.init.superClass && /Component$/.test(gen_inline(v.init.superClass))) continue;
 				if (!t.isIdentifier(v.id) || !v.init) {
 					kept.push(v);
 					continue;
@@ -915,10 +966,12 @@ function module_level(ast: t.File, d: Discovery, fc: FileCtx, components: Set<t.
 			continue;
 		}
 		if (t.isFunctionDeclaration(decl) && decl.id && /^use[A-Z]/.test(decl.id.name) && has_hooks(decl)) {
-			warnings.push(`${decl.id.name}() is a custom hook defined in this file; it still calls React hooks: rewrite it as a function in a .svelte.ts module using runes`);
+			warnings.push(`${decl.id.name}() is a custom hook defined in this file; it still calls React hooks: rewrite it to a function in a .svelte.ts module using runes`);
 		}
+		if (t.isFunctionDeclaration(decl) && decl.id && fc.jsx_helpers.some((helper) => helper.id?.name === decl.id?.name)) continue;
 		if (t.isClassDeclaration(decl) && decl.superClass && /Component$/.test(gen_inline(decl.superClass))) continue;
 		const names = decl && 'id' in decl && decl.id && t.isIdentifier(decl.id) ? [decl.id.name] : [];
+
 		const type_only = t.isTSInterfaceDeclaration(decl) || t.isTSTypeAliasDeclaration(decl);
 		decls.push({ names, code: gen(stmt), exported, type_only });
 	}
@@ -1024,8 +1077,18 @@ export function react_to_svelte(code: string): ConversionResult {
 		const e = err as { message?: string; loc?: { line: number } };
 		throw new ReactConvertError(String(e.message ?? err).replace(/\s*\(\d+:\d+\)$/, ''), e.loc?.line ?? null);
 	}
+	const normalized = normalize_class_components(ast);
 	const d = discover(ast);
-	if (!d.components.length) throw new ReactConvertError(d.warnings[0] ?? 'No React component found: expected a function (or memo/forwardRef) that returns JSX');
+	d.warnings.unshift(...normalized.warnings);
+	if (!d.components.length) {
+		const contains_jsx = has_jsx(ast);
+		throw new ReactConvertError(
+			d.warnings[0] ??
+				(contains_jsx
+					? 'No supported React component found: expected a function, class, memo, or forwardRef that returns JSX'
+					: 'This file contains no JSX component; keep it as TypeScript rather than converting it to .svelte')
+		);
+	}
 
 	const react = new Set<string>();
 	for (const stmt of ast.program.body) if (t.isImportDeclaration(stmt) && REACT_SOURCES(stmt.source.value)) for (const s of stmt.specifiers) react.add(s.local.name);
@@ -1036,7 +1099,13 @@ export function react_to_svelte(code: string): ConversionResult {
 			paths.set(p.node, p);
 		}
 	});
-	const fc: FileCtx = { ast, react, paths, contexts: new Map(), styled: new Map(), types: new_type_use() };
+	const component_names = new Set(d.components.map((component) => component.name));
+	const jsx_helpers: t.FunctionDeclaration[] = [];
+	for (const stmt of ast.program.body) {
+		const decl = t.isExportNamedDeclaration(stmt) ? stmt.declaration : stmt;
+		if (t.isFunctionDeclaration(decl) && decl.id && !component_names.has(decl.id.name) && fn_returns_jsx(decl)) jsx_helpers.push(decl);
+	}
+	const fc: FileCtx = { ast, react, paths, jsx_helpers, contexts: new Map(), styled: new Map(), types: new_type_use() };
 	const single = d.components.length === 1;
 	// props are read before React types are rewritten (ReactNode marks a snippet prop)
 	const analyses = d.components.map((c) => analyze_props(c, ast, react, d.default_props.get(c.name), single));
@@ -1062,11 +1131,15 @@ export function react_to_svelte(code: string): ConversionResult {
 
 	const main_index = Math.max(0, d.components.findIndex((c) => c.is_default));
 	const order = [main_index, ...converted.map((_, i) => i).filter((i) => i !== main_index)];
-	const files: ConvertedFile[] = order.map((i, k) => ({
-		name: `${converted[i].name}.svelte`,
-		code: assemble(converted[i], converted, mod, fc, k === 0, jsx_tags),
-		warnings: [...new Set([...(k === 0 ? file_warnings : []), ...converted[i].warnings])]
-	}));
+	const files: ConvertedFile[] = order.map((i, k) => {
+		const warn = [...new Set([...(k === 0 ? file_warnings : []), ...converted[i].warnings])];
+		const code = assemble(converted[i], converted, mod, fc, k === 0, jsx_tags);
+		// The UI lists warnings under the panes; they also ride in the file itself as
+		// HTML comments, so a copied file still says what was left unconverted.
+		// (`--` would close the comment early, so it becomes an em dash.)
+		const notes = warn.map((w) => `<!-- ⚠ ${w.replace(/--/g, '—')} -->`).join('\n');
+		return { name: `${converted[i].name}.svelte`, code: warn.length ? `${notes}\n${code}` : code, warnings: warn };
+	});
 	const warnings = files.length === 1 ? files[0].warnings : files.flatMap((f) => f.warnings.map((w) => `${f.name}: ${w}`));
 	return { svelte: files[0].code, files, warnings };
 }

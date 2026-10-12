@@ -24,8 +24,9 @@ export async function render_hot(entry: URL, options: RenderOptions = {}): Promi
 		clearTimeout(timer);
 		timer = setTimeout(async () => {
 			try {
-				load_styles();
+				const built = load_styles();
 				render(await load(), options);
+				console.log(`[fractalgpui] reloaded ${new Date().toLocaleTimeString()} (${built.registered} rules, ${built.fractalstyler.mode})`);
 			} catch (err) {
 				console.error('[fractalgpui] reload failed:', (err as Error).message);
 			}

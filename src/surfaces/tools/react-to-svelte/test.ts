@@ -38,10 +38,9 @@ check('copy flashes the status bar', status.message.startsWith('Copied Counter.s
 }
 if (process.env.FRACTALGPUI_SHOTS) screenshot(`${process.env.FRACTALGPUI_SHOTS}/react-to-svelte.png`);
 
-// samples (left sidebar)
-check('left sidebar lists the eight samples', SAMPLES.length === 8 && SAMPLES.every((s) => !!find_test_id(`r2s-sample-${s.id}`)));
-click_test_id('r2s-sample-users');
-check('clicking a sample loads it', r2s_tool.source, SAMPLES[5].source);
+// the toolbar Sample button loads SAMPLES[0]; here the users sample is set directly
+r2s_tool.source = SAMPLES[5].source;
+settle();
 check('early returns render as an {#if} chain', painted().includes('{#if loading}') && painted().includes('{:else if error}'));
 check('warnings are listed under the panes', !!find_test_id('svelte-warnings') && painted().includes('getContext(ThemeContext)'));
 
@@ -79,7 +78,9 @@ check('replaced inputs are kept, newest first', r2s_tool.history.map((h) => head
 click_test_id('r2s-history-1');
 check('clicking a recent input restores it', r2s_tool.source.startsWith('function Item'));
 click_test_id('r2s-history-clear');
-check('recent inputs can be cleared', r2s_tool.history.length === 0 && !find_test_id('r2s-history-0'));
+check('trash alone keeps the recents (it only arms the confirm)', r2s_tool.history.length > 0 && !!find_test_id('r2s-history-clear-confirm'));
+click_test_id('r2s-history-clear-confirm');
+check('confirming clears the recent inputs', r2s_tool.history.length === 0 && !find_test_id('r2s-history-0'));
 
 // a tool command opens Tools on this tool
 switch_to('home');
@@ -91,4 +92,4 @@ settle();
 if (process.env.FRACTALGPUI_SHOTS) screenshot(`${process.env.FRACTALGPUI_SHOTS}/react-to-svelte-warnings.png`);
 tools_state.active = 'css-to-sass';
 
-finish('react-to-svelte', 26);
+finish('react-to-svelte', 25);

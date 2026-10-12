@@ -1,0 +1,210 @@
+// ============================================================================
+// flow — L2. Containers and the alignment universe, verbatim from the
+// registry. Alignment classes are nested under their base — never standalone.
+// x/y are physical axes, always (Contract 4).
+// ============================================================================
+.box
+	display: flex
+	flex-direction: column
+	&.xcenter
+		align-items: center
+		text-align: center
+	&.xleft
+		align-items: flex-start
+		text-align: left
+	&.xright
+		align-items: flex-end
+		text-align: right
+	&.ycenter
+		justify-content: center
+	&.ytop
+		justify-content: flex-start
+	&.ybot
+		justify-content: flex-end
+	&.ybetween
+		justify-content: space-between
+	&.yevenly
+		justify-content: space-evenly
+	&.yaround
+		justify-content: space-around
+
+.row
+	display: flex
+	flex-direction: row
+	&.xleft
+		justify-content: flex-start
+	&.xcenter
+		justify-content: center
+	&.xright
+		justify-content: flex-end
+	&.xbetween
+		justify-content: space-between
+	&.xevenly
+		justify-content: space-evenly
+	&.xaround
+		justify-content: space-around
+	&.ycenter
+		align-items: center
+	&.ytop
+		align-items: flex-start
+	&.ybot
+		align-items: flex-end
+
+.grid, .grid-2, .grid-3, .grid-4, .grid-5, .grid-6
+	display: grid
+	&.center
+		place-items: center
+	&.xcenter
+		justify-items: center
+		text-align: center
+	&.xleft
+		justify-items: start
+		text-align: left
+	&.xright
+		justify-items: end
+		text-align: right
+	&.xstretch
+		justify-items: stretch
+	&.ycenter
+		align-items: center
+	&.ytop
+		align-items: start
+	&.ybot
+		align-items: end
+	&.ystretch
+		align-items: stretch
+	&.xbetween
+		justify-content: space-between
+	&.xevenly
+		justify-content: space-evenly
+	&.xaround
+		justify-content: space-around
+	&.ybetween
+		align-content: space-between
+	&.yevenly
+		align-content: space-evenly
+	&.yaround
+		align-content: space-around
+
+.wrap
+	flex-wrap: wrap
+
+.grow
+	flex: 1 1 0%
+
+.shrink-0
+	flex-shrink: 0
+
+.relative
+	position: relative
+.absolute
+	position: absolute
+.fixed
+	position: fixed
+.sticky
+	position: sticky
+
+// Scroll containers. A panel that has to hold more than fits — a long option
+// list, a code block, a table — is a composition primitive, not a bespoke
+// widget. Without these the only way to express it was a hand-written rule,
+// which is the escape hatch the registry exists to avoid.
+// Pair with a height: .scroll-y needs one to have anything to scroll against.
+.scroll-y // Vertical scroll inside a bounded height; needs an .h-* or a constraining flex parent
+	overflow-y: auto
+	overflow-x: hidden
+	overscroll-behavior: contain
+
+.scroll-x // Horizontal scroll inside a bounded width; .reel adds snap points
+	overflow-x: auto
+	overflow-y: hidden
+	overscroll-behavior: contain
+
+.card
+	background: var(--bg-panel)
+	footer
+		margin-top: auto
+	&[data-variant="primary"]
+		background: var(--bg-surface)
+		border: 1px solid var(--border-subtle)
+		&:hover
+			border: 1px solid var(--border-strong)
+	&[data-variant="secondary"]
+		background: var(--bg-sunken)
+		border: 1px solid var(--border-strong)
+		&:hover
+			border: 1px solid var(--border-subtle)
+	&[data-variant="soft"]
+		background: var(--bg-extra)
+		border: 1px solid transparent
+		&:hover
+			background: var(--bg)
+			border: 1px solid var(--border)
+	&[data-variant="outline"]
+		background: transparent
+		color: var(--text-primary)
+		border: 1px solid var(--border-strong)
+		&:hover
+			background: var(--theme-color)
+	&[data-variant="ghost"]
+		background: transparent
+		border: none
+	&[data-variant="link"]
+		background: var(--bg-surface)
+		border: 1px solid var(--border-subtle)
+		text-decoration: none
+		&:hover
+			border: 1px solid var(--theme-color)
+	&[data-shape="modern"]
+		border-radius: var(--radius-sm)
+	&[data-shape="curved"]
+		border-radius: var(--radius-md)
+	&[data-shape="round"]
+		border-radius: var(--radius-full)
+	&[data-pad="sm"]
+		padding: var(--space-sm)
+	&[data-pad="md"]
+		padding: var(--space-md)
+	&[data-pad="bs"]
+		padding: var(--space-bs)
+	&[data-pad="lg"]
+		padding: var(--space-lg)
+	&[data-pad="xl"]
+		padding: var(--space-xl)
+
+.chip
+	font-size: var(--text-xs)
+	font-weight: 500
+	letter-spacing: 0.01rem
+	padding: var(--space-xs) var(--space-sm)
+	border-radius: var(--radius-md)
+
+.prose-section
+	display: flex
+	flex-direction: column
+	gap: var(--space-lg)
+
+.nav-section
+	display: flex
+	flex-direction: column
+	gap: var(--space-xs)
+
+.page-header
+	display: flex
+	flex-direction: column
+	padding-bottom: var(--space-2xl)
+	gap: var(--space-sm)
+
+.inputs-wrapper
+	display: flex
+	gap: var(--space-xs)
+	label
+		font-size: var(--text-sm)
+		color: var(--text-muted)
+
+.checkbox-wrapper
+	display: flex
+	align-items: center
+	gap: var(--space-xs)
+	span
+		font-size: var(--text-sm)
+		font-weight: 500

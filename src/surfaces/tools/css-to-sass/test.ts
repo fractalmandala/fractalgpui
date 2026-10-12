@@ -6,7 +6,7 @@ import { last_copied } from '../../../kernel/clipboard.ts';
 import { all_commands } from '../../../kernel/commands.svelte.ts';
 import { settings, switch_to } from '../../../kernel/settings.svelte.ts';
 import { status } from '../../../kernel/status.svelte.ts';
-import { convert, css_tool, detect_syntax, history_of, headline, SAMPLE, SAMPLES, SASS_SAMPLE, SASS_SAMPLES } from './state.svelte.ts';
+import { convert, css_tool, detect_syntax, history_of, headline, SAMPLE, SAMPLES, SASS_SAMPLE } from './state.svelte.ts';
 
 load_styles();
 css_tool.css = '.a { color: red }\n.a .b { margin: 0 }';
@@ -61,13 +61,10 @@ check('first output line (a comment) is painted, not clipped', painted().include
 }
 if (process.env.FRACTALGPUI_SHOTS) screenshot(`${process.env.FRACTALGPUI_SHOTS}/css-to-sass.png`);
 
-// left sidebar: samples and recent inputs
-check('left sidebar lists the samples', SAMPLES.every((x) => !!find_test_id(`sample-${x.id}`)));
+// left sidebar: recent inputs
 check('replaced and copied inputs are kept, newest first', css_tool.history.map((h) => h.css), ['.x{color: blue}', '.broken { color: red', '.a { color: red }\n.a .b { margin: 0 }']);
 click_test_id('history-1');
 check('clicking a recent input restores it', css_tool.css, '.broken { color: red');
-click_test_id('sample-layout');
-check('clicking a sample loads it', css_tool.css, SAMPLES[1].css);
 check('headline is the first selector', headline(SAMPLES[2].css), '.prose');
 
 // Convert / Diff tabs
@@ -80,10 +77,12 @@ if (process.env.FRACTALGPUI_SHOTS) screenshot(`${process.env.FRACTALGPUI_SHOTS}/
 click_test_id('surface-tabs-convert');
 check('convert tab returns to the panes', !!find_test_id('css-input'));
 click_test_id('history-clear');
-check('recent inputs can be cleared', css_tool.history.length === 0 && !find_test_id('history-0'));
+check('trash alone keeps the recents (it only arms the confirm)', css_tool.history.length > 0 && !!find_test_id('history-clear-confirm'));
+click_test_id('history-clear-confirm');
+check('confirming clears the recent inputs', css_tool.history.length === 0 && !find_test_id('history-0'));
 
 // hosted by the Tools surface
-check('the tool list sits above the tool\'s own sidebar', !!find_test_id('tool-list') && !!find_test_id('tool-item-css-to-sass') && !!find_test_id('sample-components'));
+check('the tool list sits above the tool\'s own sidebar', !!find_test_id('tool-list') && !!find_test_id('tool-item-css-to-sass'));
 switch_to('home');
 all_commands().find((c) => c.id === 'css-to-sass.diff')!.run();
 click_test_id('surface-tools'); // settle
@@ -98,7 +97,6 @@ check('direction toggle switches to Sass → CSS', [css_tool.direction, !!find_t
 check('only Sass → CSS options show', [!!find_test_id('opt-syntax'), !!find_test_id('opt-style'), !!find_test_id('opt-nest'), !!find_test_id('opt-comments')], [true, true, false, false]);
 check('Diff is hidden for Sass → CSS', [!!find_test_id('surface-tabs-convert'), !!find_test_id('surface-tabs-diff')], [true, false]);
 check('the sample compiles to CSS', !!find_test_id('css-output') && painted().includes('.btn.primary:focus-visible') && painted().includes('outline-offset: 2px'));
-check('samples are per direction', [SASS_SAMPLES.every((x) => !!find_test_id(`sample-${x.id}`)), !!find_test_id('sample-components')], [true, false]);
 css_tool.sass = '$c: red\n.a\n\tcolor: $c\n\t.b\n\t\tmargin: 0\n';
 settle();
 click_test_id('copy');
@@ -135,4 +133,4 @@ if (process.env.FRACTALGPUI_SHOTS) screenshot(`${process.env.FRACTALGPUI_SHOTS}/
 click_test_id('opt-direction-css-to-sass');
 check('direction toggles back', css_tool.direction, 'css-to-sass');
 
-finish('css-to-sass', 44);
+finish('css-to-sass', 42);

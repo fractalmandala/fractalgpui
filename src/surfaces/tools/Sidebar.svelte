@@ -8,7 +8,7 @@
 	const ToolSidebar = $derived(current.sidebar);
 </script>
 
-<div class="box gap-xs pad-sm" testId="tool-list">
+<div class="box gap-sm pad-md" testId="tool-list">
 	{#each TOOLS as t (t.id)}
 		<div class="wb-nav-item row ycenter gap-sm" class:active={t.id === current.id} hitbox="self" testId={`tool-item-${t.id}`} onclick={() => select_tool(t.id)}>
 			<Icon name={t.icon} tone={t.id === current.id ? 'primary' : 'secondary'} />

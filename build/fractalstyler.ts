@@ -19,8 +19,12 @@ import { compile, compileString } from 'sass';
 
 const APP_ROOT = fileURLToPath(new URL('..', import.meta.url));
 
-/** Override with FRACTALSTYLER_STYLES=/path/to/styles. */
-export const FRACTALSTYLER_STYLES = process.env.FRACTALSTYLER_STYLES ?? resolve(APP_ROOT, '../../packages/fractalstyler/src/lib/styles');
+/**
+ * The design system's Sass lives in the app itself, at `src/styles` (the `_NN_*`
+ * partials + `index.sass`); the app's own classes are `src/styles/_own.sass` and are
+ * compiled separately (build/styles.ts). Override with FRACTALSTYLER_STYLES=/path/to/styles.
+ */
+export const FRACTALSTYLER_STYLES = process.env.FRACTALSTYLER_STYLES ?? resolve(APP_ROOT, 'src/styles');
 
 export interface FractalstylerBuild {
 	dir: string;

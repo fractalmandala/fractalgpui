@@ -25,7 +25,9 @@ import { collect_tokens, empty_raw, flatten, type TokenSets } from './tokens.ts'
 import { selector_tags, used_classes, used_tags } from './used-classes.ts';
 
 export const APP_SRC = fileURLToPath(new URL('../src/', import.meta.url));
-export const APP_STYLES = fileURLToPath(new URL('../src/styles/index.sass', import.meta.url));
+// The app's own classes only: the design system (`src/styles/index.sass` + its partials)
+// is compiled by fractalstyler.ts and added first, so these win ties.
+export const APP_STYLES = fileURLToPath(new URL('../src/styles/_own.sass', import.meta.url));
 
 export interface StyleBuild {
 	fractalstyler: FractalstylerBuild;
@@ -100,7 +102,9 @@ let registered = new Set<string>();
  */
 function register(rules: ClassRule[]) {
 	const keys = new Set(rules.flatMap((rule) => rule.classes));
-	for (const key of registered) if (!keys.has(key)) define_styles(key, []);
+	// Clear every previously registered key first: re-registering alone leaves
+	// stale rules on the native side, so edited declarations would never clear.
+	for (const key of registered) define_styles(key, []);
 	for (const key of keys) define_styles(key, rules);
 	registered = keys;
 }

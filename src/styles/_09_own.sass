@@ -1,0 +1,231 @@
+@use '00_config' as *
+@use '00_tokens' as *
+
+.site-logomotif
+	height: 48px
+	transform-origin: center center
+	transition: transform 210ms var(--transin2)
+	&:hover
+		transform: scale(1.2)
+
+.logotype
+	height: 28px
+
+.project-circle
+	border-radius: 24px
+	width: 16px
+	height: 16px
+
+
+// Mascot (src/lib/comps/Mascot.svelte): CSS-only "3D feel" logo.
+// JS writes the --mascot-* custom properties on .mascot; all transforms live here.
+// Pupil/gloss translations are in SVG user units (1024 image space), hence `* 1px`.
+.mascot
+	display: inline-block
+	position: relative
+	flex: none
+	line-height: 0
+	perspective: var(--mascot-persp, 400px)
+
+.mascot-bob,
+.mascot-tilt
+	display: block
+
+.mascot-bobs .mascot-bob
+	animation: mascot-bob 3.6s ease-in-out infinite alternate
+
+.mascot-tilt
+	position: relative
+	transform: rotateX(var(--mascot-rx, 0deg)) rotateY(var(--mascot-ry, 0deg))
+	will-change: transform
+
+.mascot-base
+	display: block
+	user-select: none
+	-webkit-user-drag: none
+
+.mascot-overlay
+	position: absolute
+	inset: 0
+	width: 100%
+	height: 100%
+	overflow: visible
+	pointer-events: none
+
+.mascot-mask
+	mask-type: alpha
+
+.mascot-pupil-l
+	transform: translate(calc(var(--mascot-plx, 0) * 1px), calc(var(--mascot-ply, 0) * 1px))
+
+.mascot-pupil-r
+	transform: translate(calc(var(--mascot-prx, 0) * 1px), calc(var(--mascot-pry, 0) * 1px))
+
+.mascot-gloss
+	opacity: 0.42
+	transform: translate(calc(var(--mascot-gx, 400) * 1px), calc(var(--mascot-gy, 400) * 1px))
+
+.mascot-shade
+	opacity: 0.55
+	transform: translate(calc((1024 - var(--mascot-gx, 400)) * 1px), calc((1120 - var(--mascot-gy, 400)) * 1px))
+
+.mascot-blinks .mascot-lid
+	animation: mascot-blink 5.2s ease-in-out infinite
+
+@keyframes mascot-blink
+	0%, 93%, 100%
+		transform: translateY(0)
+	96%
+		transform: translateY(232px)
+
+@keyframes mascot-bob
+	from
+		transform: translateY(0)
+	to
+		transform: translateY(-3%)
+
+@media (prefers-reduced-motion: reduce)
+	.mascot-bobs .mascot-bob,
+	.mascot-blinks .mascot-lid
+		animation: none
+	.mascot-tilt
+		transform: none
+
+// MascotGL (src/lib/comps/MascotGL.svelte): WebGL2 lab version of the mascot.
+// The canvas overhangs the mascot box by 30% per side (EXTENT = 0.8) for tilt + shadow.
+.mascotgl
+	display: inline-block
+	position: relative
+	flex: none
+	line-height: 0
+
+.mascotgl-spacer
+	display: block
+
+.mascotgl-canvas
+	position: absolute
+	left: 50%
+	top: 50%
+	width: 160%
+	height: 160%
+	transform: translate(-50%, -50%)
+	pointer-events: none
+	opacity: 0
+
+.mascotgl-ready
+	opacity: 1
+
+// Header-sized: 15% overhang per side (EXTENT_COMPACT = 0.65), still outside the layout box.
+.mascotgl-compact .mascotgl-canvas
+	width: 130%
+	height: 130%
+
+.hero-name
+	font-weight: 800
+	font-size: calc(var(--text-5xl) * 2)
+	letter-spacing: -0.2rem
+
+.fsx-accordion
+	display: flex
+	flex-direction: column
+	gap: var(--space-xs)
+
+.fsx-accordion-item
+	.fsx-accordion-content
+		display: grid
+		grid-template-rows: 0fr
+		padding: 0
+		transition: grid-template-rows var(--speed2) var(--transout1)
+	// The panel is what collapses. It needs min-height: 0 so the grid row can
+	// size it, and overflow: hidden so the content clips while closed — which
+	// is why it carries a name rather than being reached at by position.
+	.fsx-accordion-panel
+		overflow: hidden
+		min-height: 0
+	&.open .fsx-accordion-content
+		grid-template-rows: 1fr
+		padding: var(--space-sm)
+
+.fsx-accordion-item
+	&[data-variant="primary"]
+		background: var(--bg-panel)
+		border: 1px solid var(--border)
+		color: var(--text-primary)
+		&:hover
+			background: var(--bg-raised)
+			border: 1px solid var(--border-strong)
+	&[data-variant="secondary"]
+		background: var(--bg-sunken)
+		color: var(--text-secondary)
+		border: 1px solid var(--border)
+		&:hover
+			background: var(--state-hover)
+	&[data-variant="soft"]
+		background: var(--theme-color-sub)
+		color: #191512
+		border: 1px solid var(--theme-color-sub)
+		&:hover
+			background: var(--theme-color)
+			border: 1px solid var(--theme-color)
+			color: var(--white-fixed)
+	&[data-variant="outline"]
+		background: var(--bg)
+		color: var(--text-primary)
+		border: 1px solid var(--border-strong)
+		&:hover
+			background: var(--state-hover)
+	&[data-variant="ghost"]
+		background: transparent
+		color: var(--text-primary)
+		border: none
+		&:hover
+			background: var(--state-hover)
+	&[data-variant="link"]
+		background: transparent
+		color: var(--theme-color)
+		border: none
+		&:hover
+			text-decoration: underline
+	&[data-variant="destructive"]
+		background: var(--danger)
+		color: var(--white-fixed)
+		border: 1px solid var(--danger)
+		&:hover
+			background: var(--danger-hover)
+	&[data-shape="modern"]
+		border-radius: var(--radius-sm)
+	&[data-shape="curved"]
+		border-radius: var(--radius-md)
+	&[data-shape="round"]
+		border-radius: var(--radius-full)
+	&[data-size="sm"]
+		height: var(--height-sm)
+		font-size: var(--text-sm)
+	&[data-size="md"]
+		height: var(--height-md)
+		font-size: var(--text-md)
+	&[data-size="bs"]
+		height: var(--height-bs)
+		font-size: var(--text-bs)
+	&[data-size="lg"]
+		height: var(--height-lg)
+		font-size: var(--text-bs)
+
+.fsx-accordion-trigger
+	display: flex
+	flex-direction: row
+	align-items: center
+	justify-content: space-between
+	width: 100%
+	min-height: var(--height-lg)
+	padding: var(--space-sm)
+	text-align: left
+	background: transparent
+	border: 0
+	cursor: pointer
+	user-select: none
+	&:hover
+		background: var(--bg-raised)
+	&:focus-visible
+		outline: 2px solid var(--ring)
+		outline-offset: -2px

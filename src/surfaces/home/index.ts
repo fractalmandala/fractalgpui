@@ -1,4 +1,5 @@
 import type { Surface } from '../../kernel/types.ts';
+import PanelPrimary from '../agents/PanelPrimary.svelte';
 import Home from './Home.svelte';
 
 export default {
@@ -6,5 +7,6 @@ export default {
 	title: 'Home',
 	icon: 'house',
 	description: 'Every surface in the workbench.',
-	component: Home
+	component: Home,
+	sections: { 'sidebar-panel': { body: PanelPrimary } }
 } satisfies Surface;

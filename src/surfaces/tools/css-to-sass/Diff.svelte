@@ -17,7 +17,7 @@
 		{#if !rt.ok}
 			<text class="text-sm text-danger pad-sm" testId="diff-error">{rt.error}</text>
 		{:else if rt.patch}
-			<diff class="mono text-sm" patch={rt.patch} testId="diff-patch"></diff>
+			<diff class="mono text-md" patch={rt.patch} testId="diff-patch"></diff>
 		{:else}
 			<text class="text-sm text-secondary pad-sm" testId="diff-identical">Compiling the Sass gives back exactly the input CSS.</text>
 		{/if}
