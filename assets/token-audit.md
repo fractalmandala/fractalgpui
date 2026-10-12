@@ -262,7 +262,7 @@ Colours are compared against fractalstyler's value for the same role in the same
 | `--height-md` | 20px |
 | `--height-bs` | 24px |
 | `--height-lg` | 32px |
-| `--control-h-sm` | 21px |
+| `--control-h-sm` | 21px | XX gone
 | `--control-h-bs` | 32px |
 | `--control-h-lg` | 38px |
 | `--avatar-size` | 32px |

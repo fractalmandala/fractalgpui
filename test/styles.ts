@@ -15,13 +15,13 @@ check('rules registered after pruning', build.registered > 30);
 check('no unknown classes and no unexpected losses', problems, []);
 
 const { light, dark } = build.tokens;
-check('space-sm flattened to px', dark['space-sm'], '8px');
-check('text-lg flattened to px', dark['text-lg'], '20px');
+check('space scale flattened to px', dark['space-sm'], '8px');
+check('text scale flattened to px', dark['text-lg'], '20px');
 check('neutral canvas: white / black', [light.bg, dark.bg], ['#FFFFFF', '#000000']);
-check('neutral surfaces and borders', [light['bg-surface'], light['bg-sunken'], light.border, dark['bg-surface'], dark['bg-raised'], dark.border], ['#FAFAFA', '#F5F5F5', '#EBEBEB', '#0A0A0A', '#111111', '#1F1F1F']);
-check('accent is greenpop1 in both modes', [light['theme-color'], dark['theme-color'], light.accent, dark.accent], ['#00e676', '#00e676', '#00e676', '#00e676']);
-check('fractalstyler black-fixed text on the accent', dark['on-accent'], '#171717');
-check('sans font is the installed variable family', dark['font-sans'], 'General Sans Variable');
+check('neutral surfaces and borders', [light['bg-surface'], light['bg-sunken'], light.border, dark['bg-surface'], dark['bg-raised'], dark.border], ['#FFFFFF', '#F5F5F5', '#EBEBEB', '#0A0A0A', '#111111', '#1F1F1F']);
+check('accent is the app green in both modes', [light['theme-color'], dark['theme-color'], light.accent, dark.accent], ['#00e676', '#00e676', '#00e676', '#00e676']);
+check('black text on the accent', dark['on-accent'], '#18181B');
+check('sans font is the installed family', dark['font-sans'], 'General Sans Variable');
 check('app token --font-mono present', dark['font-mono'], 'Menlo');
 check('own classes all translated', ['wb-btn', 'section-sidebar-left', 'section-main-header', 'section-main-footer', 'wb-palette', 'wb-scrim'].every((c) => build.defined.has(c)));
 
@@ -30,7 +30,6 @@ check('own classes all translated', ['wb-btn', 'section-sidebar-left', 'section-
 const SIZED = /^(font-size|padding(-\w+)?|margin(-\w+)?|gap|row-gap|column-gap|(min-|max-)?height|(min-|max-)?width|border(-\w+)*-radius)$/;
 const LITERAL_OK: Record<string, string> = {
 	'.wb-toggle padding: 2px': "fractalstyler's .switch-track geometry (1px border + 2px padding around --switch-thumb = --switch-h)",
-	'.section-sidebar-left.rail width: 52px': 'layout width, no token (kernel/layout RAIL)'
 };
 const own = readFileSync(new URL('../src/styles/_own.sass', import.meta.url), 'utf8');
 const literals: string[] = [];

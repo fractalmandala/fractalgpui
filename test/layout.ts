@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { check, finish } from 'gpuix-svelte/test';
 import { flushSync } from 'svelte';
 import { emit, on } from '../src/kernel/bus.ts';
-import { fit, is_collapsed, layout, LIMITS, RAIL, reset_width, set_width, toggle, toggle_all, width_of } from '../src/kernel/layout.svelte.ts';
+import { fit, is_collapsed, layout, LIMITS, reset_width, set_width, toggle, toggle_all, width_of } from '../src/kernel/layout.svelte.ts';
 import { flush, settings_file } from '../src/kernel/storage.svelte.ts';
 
 const L = 'sidebar-left', P = 'sidebar-panel', R = 'sidebar-right';
@@ -42,13 +42,12 @@ check('toggle_all opens everything when all are collapsed', [is_collapsed(L, a),
 check('other surfaces keep their own state', [is_collapsed(P, b), is_collapsed(R, b)], [true, true]);
 
 const w = { [L]: 240, [P]: 340, [R]: 300 } as const;
-check('wide window shows everything open', fit(1400, a, w), { [L]: 'open', [P]: true, [R]: true });
-check('narrower drops sidebar-right first', fit(1100, a, w), { [L]: 'open', [P]: true, [R]: false });
-check('narrower still drops sidebar-panel too', fit(800, a, w), { [L]: 'open', [P]: false, [R]: false });
-check('collapsed sidebars never show', fit(1400, b, w), { [L]: 'open', [P]: false, [R]: false });
+check('wide window fits everything open', [fit(1400, a, w).open[L], fit(1400, a, w).fits[R]], [true, true]);
+check('narrower drops sidebar-right first', [fit(1100, a, w).fits[P], fit(1100, a, w).fits[R]], [true, false]);
+check('narrower still drops sidebar-panel too', [fit(800, a, w).fits[P], fit(800, a, w).fits[R]], [false, false]);
+check('collapsed sidebars never show', [fit(1400, b, w).open[L], fit(1400, b, w).open[P]], [true, false]);
 toggle(L, a);
-check('collapsed left is a rail', fit(1400, a, w)[L], 'rail');
-check('rail width', RAIL, 52);
+check('collapsing left keeps it mounted (it animates to 0, never a rail)', [fit(1400, a, w).open[L], fit(1400, a, w).fits[L]], [false, true]);
 toggle(L, a);
 
 flushSync();
@@ -64,4 +63,4 @@ emit('surface:switch', { from: 'a', to: 'b' });
 check('bus delivers until unsubscribed', got, ['home>a']);
 void layout;
 
-finish('layout', 22);
+finish('layout', 21);

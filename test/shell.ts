@@ -12,8 +12,8 @@ load_styles();
 mount_headless(App, { width: 1400, height: 538 });
 
 check('starts on home', !!find_test_id('surface-home'));
-check('nav lists Home and Tools only', !!find_test_id('nav-home') && !!find_test_id('nav-tools') && !find_test_id('nav-css-to-sass'));
-check('status bar shows the tool', all_text().includes('Fractal workbench'));
+check('nav lists Home, Tools, Agents and Settings', !!find_test_id('nav-home') && !!find_test_id('nav-tools') && !!find_test_id('nav-agents') && !!find_test_id('nav-settings') && !find_test_id('nav-css-to-sass'));
+check('header carries the surface nav and the sidebar toggle', !!find_test_id('nav-home') && !!find_test_id('toggle-sidebar-left'));
 
 // home grid
 check('home shows Tools as one card', !!find_test_id('home-open-tools') && !find_test_id('home-open-css-to-sass'));
@@ -67,7 +67,7 @@ check('clicking the scrim closes', palette.open, false);
 press('cmd-shift-l');
 check('cmd-shift-l toggles the theme', settings.theme, 'dark');
 click_test_id('theme-toggle');
-check('rail toggle toggles the theme', settings.theme, 'light');
+check('header toggle toggles the theme', settings.theme, 'light');
 
 // persistence
 flush();
