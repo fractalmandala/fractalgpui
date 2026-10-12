@@ -28,6 +28,9 @@ export const models_ui = $state({
 	/** Provider whose detail (key + model search) is open. */
 	open: '',
 	search: '',
+	/** Provider list filter and how many rows are built (grown by Show more). */
+	providerSearch: '',
+	providerLimit: 30,
 	keyDraft: '',
 	envDraft: '',
 	message: null as { kind: 'success' | 'danger'; text: string } | null,

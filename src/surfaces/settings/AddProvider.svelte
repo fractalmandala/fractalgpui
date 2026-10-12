@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import Button from '../../ui/Button.svelte';
 	import IconButton from '../../ui/IconButton.svelte';
 	import Menu from '../../ui/Menu.svelte';
@@ -48,7 +49,7 @@
 	} = $props();
 
 	// Fixed at mount (the parent sets `editing` before opening the modal).
-	const initial = editing;
+	const initial = untrack(() => editing);
 	type Stage = 'list' | 'key' | 'custom' | 'login';
 	let stage = $state<Stage>(initial ? 'custom' : 'list');
 	let filter = $state('');
@@ -61,7 +62,7 @@
 		loginLabel: string | null;
 	}
 
-	function catalog(): CatalogRow[] {
+	const catalog = $derived.by((): CatalogRow[] => {
 		const out: CatalogRow[] = [];
 		for (const p of piModels().getProviders()) {
 			const sections = authSections(p.auth);
@@ -75,14 +76,18 @@
 			});
 		}
 		return out;
-	}
+	});
 
+	// Bounded rendering: a long catalog is filtered with the search box, never drawn in full.
+	const LIST_LIMIT = 60;
 	const matches = (name: string, host: string) => {
 		const q = filter.trim().toLowerCase();
 		return !q || name.toLowerCase().includes(q) || host.toLowerCase().includes(q);
 	};
-	const keyRows = () => catalog().filter((p) => p.sections.includes('keys') && matches(p.name, p.host));
-	const subRows = () => catalog().filter((p) => p.sections.includes('subscriptions') && matches(p.name, p.host));
+	const keyAll = $derived(catalog.filter((p) => p.sections.includes('keys') && matches(p.name, p.host)));
+	const keyRows = $derived(keyAll.slice(0, LIST_LIMIT));
+	const subAll = $derived(catalog.filter((p) => p.sections.includes('subscriptions') && matches(p.name, p.host)));
+	const subRows = $derived(subAll.slice(0, LIST_LIMIT));
 
 	// --- key form ---
 	let keyId = $state('');
@@ -284,7 +289,7 @@
 		<SearchInput value={filter} placeholder="Filter services" oninput={(v) => (filter = v)} testId={`${testId}-filter`} focus />
 		<div class="box gap-xs">
 			<SectionLabel label="Connect with an API key" />
-			{#each keyRows() as p (p.id)}
+			{#each keyRows as p (p.id)}
 				<!-- svelte-ignore a11y_click_events_have_key_events -->
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
 				<div class="wb-row-item row ycenter gap-sm" hitbox="self" testId={`${testId}-key-${p.id}`} onclick={() => openKey(p.id, p.name)}>
@@ -295,6 +300,7 @@
 					</div>
 				</div>
 			{/each}
+			{#if keyAll.length > keyRows.length}<text class="text-xs text-muted px-sm">Showing {keyRows.length} of {keyAll.length}. Type in the filter to narrow.</text>{/if}
 			<!-- svelte-ignore a11y_click_events_have_key_events -->
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
 			<div
@@ -321,7 +327,7 @@
 		</div>
 		<div class="box gap-xs">
 			<SectionLabel label="Sign in with a subscription" />
-			{#each subRows() as p (p.id)}
+			{#each subRows as p (p.id)}
 				<!-- svelte-ignore a11y_click_events_have_key_events -->
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
 				<div class="wb-row-item row ycenter gap-sm" hitbox="self" testId={`${testId}-sub-${p.id}`} onclick={() => openLogin(p.id, p.name, p.loginLabel)}>
@@ -332,6 +338,7 @@
 					</div>
 				</div>
 			{/each}
+			{#if subAll.length > subRows.length}<text class="text-xs text-muted px-sm">Showing {subRows.length} of {subAll.length}. Type in the filter to narrow.</text>{/if}
 		</div>
 	{:else if stage === 'key'}
 		<div class="box gap-xs">

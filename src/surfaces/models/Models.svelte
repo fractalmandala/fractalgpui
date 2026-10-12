@@ -30,6 +30,8 @@
 	const num = (n: number) => n.toLocaleString('en-US');
 	const pct = (p: number) => `${Math.round(p * 10) / 10}%`;
 	const ROW_LIMIT = 40;
+	const PROVIDER_PAGE = 30;
+	const KEPT_LIMIT = 50;
 
 	const keptList = $derived((void models_ui.rev, kept()));
 	const found = $derived(detected());
@@ -37,6 +39,8 @@
 	const chat = $derived(currentChat());
 	const snap = $derived(chat?.rows ? chat.usageSnapshot() : null);
 
+	// The catalog can hold hundreds of providers. Only a bounded page of rows is ever built: the list is
+	// searchable and grows by PROVIDER_PAGE on "Show more". Per-row details are computed for visible rows only.
 	interface P {
 		id: string;
 		name: string;
@@ -46,31 +50,38 @@
 		keyText: string;
 		enabled: boolean;
 	}
+	const allProviders = $derived.by(() => {
+		void models_ui.rev;
+		return piModels()
+			.getProviders()
+			.map((p) => ({ id: p.id, name: p.name ?? p.id, host: p.baseUrl ?? '' }));
+	});
+	const filtered = $derived.by(() => {
+		const q = models_ui.providerSearch.trim().toLowerCase();
+		return q ? allProviders.filter((p) => p.id.toLowerCase().includes(q) || p.name.toLowerCase().includes(q) || p.host.toLowerCase().includes(q)) : allProviders;
+	});
 	const providers = $derived.by((): P[] => {
 		void models_ui.rev;
 		const custom = new Set(customProviders().map((d) => d.id));
-		return piModels()
-			.getProviders()
-			.map((p) => {
-				let count = 0;
-				try {
-					count = piModels().getModels(p.id).length;
-				} catch {
-					count = 0;
-				}
-				const stored = credentialBag.readAll()[p.id];
-				const ref = keyEnvRef(p.id);
-				const env = found.find((f) => f.providerId === p.id);
-				return {
-					id: p.id,
-					name: p.name ?? p.id,
-					host: p.baseUrl ?? '',
-					custom: custom.has(p.id),
-					models: count,
-					enabled: isProviderEnabled(p.id),
-					keyText: ref ? `reads $${ref}` : stored?.type === 'api_key' ? `${maskedKey(p.id)} (key file)` : stored?.type === 'oauth' ? 'subscription sign-in' : env ? `detected from env (${env.env})` : 'no key'
-				};
-			});
+		const bag = credentialBag.readAll(); // once for the page, not once per row
+		return filtered.slice(0, models_ui.providerLimit).map((p) => {
+			let count = 0;
+			try {
+				count = piModels().getModels(p.id).length;
+			} catch {
+				count = 0;
+			}
+			const stored = bag[p.id];
+			const ref = keyEnvRef(p.id);
+			const env = found.find((f) => f.providerId === p.id);
+			return {
+				...p,
+				custom: custom.has(p.id),
+				models: count,
+				enabled: isProviderEnabled(p.id),
+				keyText: ref ? `reads $${ref}` : stored?.type === 'api_key' ? `${maskedKey(p.id)} (key file)` : stored?.type === 'oauth' ? 'subscription sign-in' : env ? `detected from env (${env.env})` : 'no key'
+			};
+		});
 	});
 
 	const catalog = $derived.by(() => {
@@ -98,7 +109,7 @@
 	<div class="box gap-xs">
 		<SectionLabel label={`Kept models · ${keptList.length}`} />
 		<text class="text-xs text-muted">Only these appear in the model picker. Nothing is chosen for you.</text>
-		{#each keptList as m (m.provider + '/' + m.id)}
+		{#each keptList.slice(0, KEPT_LIMIT) as m (m.provider + '/' + m.id)}
 			<div class="row ycenter gap-sm px-sm" testId={`md-kept-${m.provider}-${m.id}`.replace(/[^a-zA-Z0-9-]/g, '-')}>
 				<text class="text-sm text-primary grow min0 truncate">{m.name}</text>
 				<text class="text-xs text-muted shrink-0">{m.providerName}{m.unavailable ? ` · ${m.unavailable}` : ''}</text>
@@ -107,6 +118,7 @@
 		{:else}
 			<text class="text-sm text-muted px-sm" testId="md-kept-empty">No kept models yet. Open a provider below, search its models and keep the ones you want.</text>
 		{/each}
+		{#if keptList.length > KEPT_LIMIT}<text class="text-xs text-muted px-sm" testId="md-kept-more">Showing {KEPT_LIMIT} of {keptList.length} kept models.</text>{/if}
 		<div class="row ycenter gap-sm px-sm">
 			<div class="box grow min0">
 				<text class="text-sm text-primary">New sessions start on</text>
@@ -137,9 +149,10 @@
 
 	<div class="box gap-xs">
 		<div class="row ycenter xbetween gap-sm">
-			<SectionLabel label={`Providers · ${providers.length}`} />
+			<SectionLabel label={`Providers · ${filtered.length}`} />
 			<Button label="Add by link + key" variant="primary" testId="md-add" onclick={() => (models_ui.adding = true)} />
 		</div>
+		<SearchInput value={models_ui.providerSearch} placeholder={`Search ${allProviders.length} providers`} oninput={(v) => { models_ui.providerSearch = v; models_ui.providerLimit = PROVIDER_PAGE; }} testId="md-provider-search" />
 		{#each providers as p (p.id)}
 			<div class="box gap-xs" testId={`md-provider-${p.id}`}>
 				<!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -207,6 +220,12 @@
 				{/if}
 			</div>
 		{/each}
+		{#if filtered.length > providers.length}
+			<div class="row ycenter gap-sm px-sm">
+				<text class="text-xs text-muted grow" testId="md-providers-count">Showing {providers.length} of {filtered.length}.</text>
+				<Button label="Show more" testId="md-providers-more" onclick={() => (models_ui.providerLimit += PROVIDER_PAGE)} />
+			</div>
+		{/if}
 	</div>
 
 	<div class="box gap-xs" testId="md-usage">

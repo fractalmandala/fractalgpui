@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import Button from './Button.svelte';
 	import Icon from './Icon.svelte';
 	import IconButton from './IconButton.svelte';
@@ -25,7 +26,8 @@
 
 	const ROW_LIMIT = 100;
 
-	let cwd = $state(initial ?? homeDir());
+	// `initial` only seeds the starting folder; later changes to the prop must not move the browser.
+	let cwd = $state(untrack(() => initial) ?? homeDir());
 	let jump = $state('');
 	let error = $state<string | null>(null);
 
